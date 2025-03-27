@@ -71,7 +71,7 @@ for i = 1:size(E_matrix,2)
     E_plot = zeros(size(pos));
     E_plot(mesh_indices,:) = squeeze(E_matrix(:,i,:));
     E_plot_mag = sqrt(sum(E_plot.^2,2));
-    hp = patch('Faces',mesh.e,'Vertices',mesh.p,'FaceVertexCData',E_plot_mag,'FaceColor','interp');
+    hp = patch('Faces',mesh.e,'Vertices',mesh.p,'FaceVertexCData',E_plot_mag,'FaceColor','interp','LineStyle','none');
     hold on
     quiver3(downsample(mesh.p(mesh_indices,1),ds_ratio),downsample(mesh.p(mesh_indices,2),ds_ratio),downsample(mesh.p(mesh_indices,3),ds_ratio),downsample(E_plot(mesh_indices,1),ds_ratio),downsample(E_plot(mesh_indices,2),ds_ratio),downsample(E_plot(mesh_indices,3),ds_ratio),2,'filled','Color',[0.70,0.70,0.70],'MaxHeadSize',1)
     colormap("parula")
@@ -81,10 +81,11 @@ for i = 1:size(E_matrix,2)
     view(va)
     %colorbar
     % Plot coil
-    plot3(coil.pos_str(1),coil.pos_str(2),coil.pos_str(3),'.g','MarkerSize',30)
-    quiver3(coil.pos_str(1),coil.pos_str(2),coil.pos_str(3),coil.rot_str(1),coil.rot_str(2),coil.rot_str(3),0.01,"filled",'Color','g','MaxHeadSize',10)
-    quiver3(coil.pos_str(1),coil.pos_str(2),coil.pos_str(3),coil.rot_str(4),coil.rot_str(5),coil.rot_str(6),0.01,"filled",'Color','g','MaxHeadSize',10)
-    quiver3(coil.pos_str(1),coil.pos_str(2),coil.pos_str(3),coil.rot_str(7),coil.rot_str(8),coil.rot_str(9),0.01,"filled",'Color','g','MaxHeadSize',10)
+    plot3(coil.pos_str(1),coil.pos_str(2),coil.pos_str(3),'.','Color',[0.5,0.5,0.5],'MarkerSize',30)
+    quiver3(coil.pos_str(1),coil.pos_str(2),coil.pos_str(3),coil.rot_str(1),coil.rot_str(2),coil.rot_str(3),0.01,"filled",'Color',[0.5,0.5,0.5],'MaxHeadSize',10)
+    quiver3(coil.pos_str(1),coil.pos_str(2),coil.pos_str(3),coil.rot_str(4),coil.rot_str(5),coil.rot_str(6),0.01,"filled",'Color',[0.5,0.5,0.5],'MaxHeadSize',10)
+    quiver3(coil.pos_str(1),coil.pos_str(2),coil.pos_str(3),coil.rot_str(7),coil.rot_str(8),coil.rot_str(9),0.01,"filled",'Color',[0.5,0.5,0.5],'MaxHeadSize',10)
+    title(sprintf("Coil %i",i))
 end
 
 end
