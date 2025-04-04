@@ -3,14 +3,14 @@
 % This script optimizes E-fields in a paired-pulse scenario, where the
 % effect of conditioning stimulus on test stimulus is minimized.
 
-%% Set paths
+%% Set file paths
 
 addpath("misc/")
 
 % E-fields of saved coil pose
 e_field_path = "";
 
-% Headmodel (for plotting the cortex also outside the computed E-fields)
+% Headmodel for visualizing the whole cortex
 headmodel_path = "";
 
 %% Load E-fields and head model
@@ -36,7 +36,7 @@ CS_targets = GUI_point_and_dir_select(mesh,c_mesh_highlight,va);
 
 TS_targets = GUI_point_and_dir_select(mesh,c_mesh_highlight,va);
 
-%% Select region to avoid with CS
+%% Select region to avoid when applying CS
 
 avoid_inds = GUI_area_select(mesh,c_mesh_highlight,va);
 
@@ -47,14 +47,18 @@ avoid_inds = GUI_area_select(mesh,c_mesh_highlight,va);
 
 plot_targets(mesh,CS_targets,TS_targets,avoid_inds,va)
 
-%% Optimize targets
+%% Optimize E-fields (may take a minute)
 
 % Set flag to use (1) or not use (0) parallel computation
 run_parallel = 0;
 
-targeting_results_CS = optimize_Efields(CS_targets,c_mesh,E_set,run_parallel,avoid_inds_cmesh);
-%targeting_results_TS = optimize_Efields(TS_targets,c_mesh,E_set,run_parallel,[]);
+% Set maximum errors for the stimulation location and direction.
+distance_constr = 0.003; % m
+angle_constr = 10; % deg
 
+% Run optimization
+targeting_results_CS = optimize_Efields(CS_targets,distance_constr,angle_constr,c_mesh,E_set,run_parallel,avoid_inds_cmesh);
+targeting_results_TS = optimize_Efields(TS_targets,distance_constr,angle_constr,c_mesh,E_set,run_parallel,[]);
 %% Plot results
 
 plot_results(targeting_results_CS,targeting_results_TS,E_set,mesh,ROI,coil,va)
@@ -74,7 +78,6 @@ targeting_results_CS = targetsToVolts(coil,targeting_results_CS,E_set,intensity)
 targeting_results_TS = targetsToVolts(coil,targeting_results_TS,E_set,intensity);
 
 %% Functions
-
 function ThetaInDegrees = vector_angle(u,v)
     CosTheta = max(min(dot(u,v)/(norm(u)*norm(v)),1),-1);
     ThetaInDegrees = real(acosd(CosTheta));
@@ -138,7 +141,7 @@ function plot_results(CS_targeting_results,TS_targeting_results,cell_E_matrix,me
         [E_mag_max,E_mag_max_ind] = max(E_plot_mag);
 
         % Plot mesh
-        hp = patch('Faces',mesh.e,'Vertices',mesh.p,'FaceVertexCData',E_plot_mag,'FaceColor','interp');
+        hp = patch('Faces',mesh.e,'Vertices',mesh.p,'FaceVertexCData',E_plot_mag,'FaceColor','interp','LineStyle','none');
         hold on
         % Add arrows
         quiver3(downsample(mesh.p(mesh_indices,1),ds_ratio),downsample(mesh.p(mesh_indices,2),ds_ratio),downsample(mesh.p(mesh_indices,3),ds_ratio),downsample(E_plot(mesh_indices,1),ds_ratio),downsample(E_plot(mesh_indices,2),ds_ratio),downsample(E_plot(mesh_indices,3),ds_ratio),1,"filled",'Color',[0.70,0.70,0.70],'MaxHeadSize',1)
@@ -146,12 +149,12 @@ function plot_results(CS_targeting_results,TS_targeting_results,cell_E_matrix,me
         plot3(targeting_results.inputs.pos(1),targeting_results.inputs.pos(2),targeting_results.inputs.pos(3),'.r','MarkerSize',30)
         q1= quiver3(targeting_results.inputs.pos(1),targeting_results.inputs.pos(2),targeting_results.inputs.pos(3),targeting_results.inputs.direction(1),targeting_results.inputs.direction(2),targeting_results.inputs.direction(3),0.02,'filled','r','LineWidth',2,'MaxHeadSize',10);
         % Add adjusted target direction
-        q2 = quiver3(targeting_results.inputs.pos(1),targeting_results.inputs.pos(2),targeting_results.inputs.pos(3),targeting_results.target.Dir(1),targeting_results.target.Dir(2),targeting_results.target.Dir(3),0.02,'filled','Color',[1,0.5,0.5],'LineWidth',2,'MaxHeadSize',10);
+        q2 = quiver3(targeting_results.inputs.pos(1),targeting_results.inputs.pos(2),targeting_results.inputs.pos(3),targeting_results.target.Dir(1),targeting_results.target.Dir(2),targeting_results.target.Dir(3),0.01,'filled','Color',[1,0.5,0.5],'LineWidth',2,'MaxHeadSize',10);
         % Add generated stimulation point and direction
         centroid = getCentroid(mesh.p,E_plot);
         centroid_lifted = centroid.p + targeting_results.N*0.01;
         plot3(centroid_lifted(1),centroid_lifted(2),centroid_lifted(3),'.g','MarkerSize',30)
-        q3 = quiver3(centroid_lifted(1),centroid_lifted(2),centroid_lifted(3),centroid.dir(1),centroid.dir(2),centroid.dir(3),0.02,'filled','g','LineWidth',2,'MaxHeadSize',10);
+        q3 = quiver3(centroid_lifted(1),centroid_lifted(2),centroid_lifted(3),centroid.dir(1),centroid.dir(2),centroid.dir(3),0.01,'filled','g','LineWidth',2,'MaxHeadSize',10);
         plot3([centroid.p(1),centroid_lifted(1)],[centroid.p(2),centroid_lifted(2)],[centroid.p(3),centroid_lifted(3)],'-g','LineWidth',2)
         % Add maximum point
         plot3(mesh.p(E_mag_max_ind,1),mesh.p(E_mag_max_ind,2),mesh.p(E_mag_max_ind,3),'.m','MarkerSize',10)
@@ -165,11 +168,11 @@ function plot_results(CS_targeting_results,TS_targeting_results,cell_E_matrix,me
 
         view(va)
         % Add coil
-        plot3(coil.pos_str(1),coil.pos_str(2),coil.pos_str(3),'.','Color',[0.7,0.7,0.7],'MarkerSize',30)
-        q5=quiver3(coil.pos_str(1),coil.pos_str(2),coil.pos_str(3),coil.rot_str(1),coil.rot_str(2),coil.rot_str(3),0.01,"filled",'Color',[0.7,0.7,0.7],'MaxHeadSize',1);
-        quiver3(coil.pos_str(1),coil.pos_str(2),coil.pos_str(3),coil.rot_str(4),coil.rot_str(5),coil.rot_str(6),0.01,"filled",'Color',[0.7,0.7,0.7],'MaxHeadSize',1)
-        quiver3(coil.pos_str(1),coil.pos_str(2),coil.pos_str(3),coil.rot_str(7),coil.rot_str(8),coil.rot_str(9),0.01,"filled",'Color',[0.7,0.7,0.7],'MaxHeadSize',1)
-        legend([q1,q2,q3,q4,q5],'orig. target','adj. target','centroid','max','coil-pos')
+        plot3(coil.pos_str(1),coil.pos_str(2),coil.pos_str(3),'.','Color',[0.5,0.5,0.5],'MarkerSize',30)
+        q5=quiver3(coil.pos_str(1),coil.pos_str(2),coil.pos_str(3),coil.rot_str(1),coil.rot_str(2),coil.rot_str(3),0.01,"filled",'Color',[0.5,0.5,0.5],'MaxHeadSize',1);
+        quiver3(coil.pos_str(1),coil.pos_str(2),coil.pos_str(3),coil.rot_str(4),coil.rot_str(5),coil.rot_str(6),0.01,"filled",'Color',[0.5,0.5,0.5],'MaxHeadSize',1)
+        quiver3(coil.pos_str(1),coil.pos_str(2),coil.pos_str(3),coil.rot_str(7),coil.rot_str(8),coil.rot_str(9),0.01,"filled",'Color',[0.5,0.5,0.5],'MaxHeadSize',1)
+        legend([q1,q2,q3,q4,q5],'Orig. target','Adj. target','Centroid','Max','Coil')
         title_str = sprintf("Target: %s, loc: %.2f mm, dir: %.2f deg",label,targeting_results.err.location,targeting_results.err.angle);
         title(title_str)
 
@@ -221,7 +224,7 @@ function targeting_results = targetsToVolts(coil, targeting_results, E_set, inte
         current_slopes = multiplier * targeting_results{i}.weights';
         corrected_slopes = current_slopes.*coil.polarity_correction;
         volts = coil.inductances.*corrected_slopes;
-        max_volt = max(volts);
+        max_volt = max(abs(volts));
         if max_volt > max_voltage
             intensity_reduction = max_voltage/max_volt;
             volts = volts * intensity_reduction;
@@ -241,7 +244,7 @@ function va = get_view_angle(mesh,ROI)
     va = [-vector_angle([0,-1,0],N),vector_angle([-1,0,0],N)];
 end
 
-function targeting_results = optimize_Efields(targets,c_mesh,E_set,par_flag,restrict_inds)
+function targeting_results = optimize_Efields(targets,dist_constr,angle_constr,c_mesh,E_set,par_flag,restrict_inds)
 
     if par_flag
         if isempty(gcp('nocreate'))
@@ -249,19 +252,19 @@ function targeting_results = optimize_Efields(targets,c_mesh,E_set,par_flag,rest
         end
         parfor i = 1:length(targets)
             if isempty(restrict_inds)
-                targeting_results{i} = mTMS_optWeights_3D(targets(i).pos,targets(i).dir,c_mesh,E_set);
+                targeting_results{i} = mTMS_optWeights_3D(targets(i).pos,targets(i).dir,c_mesh,E_set,'DistConstr',dist_constr,'AngleConstr',angle_constr);
             else
-                targeting_results{i} = mTMS_optWeights_3D(targets(i).pos,targets(i).dir,c_mesh,E_set,'restrictEF',restrict_inds);
+                targeting_results{i} = mTMS_optWeights_3D(targets(i).pos,targets(i).dir,c_mesh,E_set,'restrictEF',restrict_inds,'DistConstr',dist_constr,'AngleConstr',angle_constr);
             end
         end
         % Close parallel pool (good practice)
-        delete(gcp('nocreate'))
+        %delete(gcp('nocreate'))
     else
         for i = 1:length(targets)
             if isempty(restrict_inds)
-                targeting_results{i} = mTMS_optWeights_3D(targets(i).pos,targets(i).dir,c_mesh,E_set);
+                targeting_results{i} = mTMS_optWeights_3D(targets(i).pos,targets(i).dir,c_mesh,E_set,'DistConstr',dist_constr,'AngleConstr',angle_constr);
             else
-                targeting_results{i} = mTMS_optWeights_3D(targets(i).pos,targets(i).dir,c_mesh,E_set,'restrictEF',restrict_inds);
+                targeting_results{i} = mTMS_optWeights_3D(targets(i).pos,targets(i).dir,c_mesh,E_set,'restrictEF',restrict_inds,'DistConstr',dist_constr,'AngleConstr',angle_constr);
             end
         end
     end
