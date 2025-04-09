@@ -1,4 +1,4 @@
-# E-field targeting
+# E-field targeting v1.0
 
 This repository is used to solve optimization problems where a set of electric fields (E-fields) are superimposed to focus the E-field at a target location and in target direction. It is specifically designed for multi-coil transcranial magnetic stimulation where the E-fields are induced in the cortex usign a set of coils, but it could be used for other applications as well.
 
