@@ -43,7 +43,7 @@ defaultStimMetric = 'WCOG';
 defaultRestrictEF = [];
 defaultSaveDir = [];
 defaultObjective = 'minEnergy';
-defaultDistConstr = 0.002;
+defaultDistConstr = 0.001;
 defaultAngleConstr = 5;
 defaultPlotFlag = 0;
 
@@ -72,7 +72,7 @@ plotFlag = p.Results.PlotFlag;
 
 % Calculate average normal within 3 cm radius around the target
 masked_indices = sqrt(sum((mesh.vertices-pos).^2,2)) < 0.03;
-N = mean(mesh.faces(masked_indices,:),1,'omitnan');
+N = mean(mesh.normals(masked_indices,:),1,'omitnan');
 N = N/norm(N);
 
 % Set target
