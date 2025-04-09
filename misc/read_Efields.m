@@ -1,30 +1,30 @@
-function [mesh, cell_E_matrix, mesh_indices, coil] = read_Efields(headmodel_path,E_path)
+function [mesh, cell_E_matrix, ROI_indices, coil] = read_Efields(headmodel_path,E_path)
 addpath(genpath(pwd))
 %% Load mesh and calculate face normals
-[pos,e] = convert_custom_bin_to_vtk(headmodel_path);
-mesh.p = pos;
-mesh.e = e+1;
+[vertices,faces] = convert_custom_bin_to_vtk(headmodel_path);
+mesh.vertices = vertices;
+mesh.faces = faces+1;
 
 % Step 1: Calculate face normals
-numFaces = size(mesh.e, 1);
+numFaces = size(mesh.faces, 1);
 faceNormals = zeros(numFaces, 3);
 for f = 1:numFaces
-    v1 = mesh.p(mesh.e(f,1),:);
-    v2 = mesh.p(mesh.e(f,2),:);
-    v3 = mesh.p(mesh.e(f,3),:);
+    v1 = mesh.vertices(mesh.faces(f,1),:);
+    v2 = mesh.vertices(mesh.faces(f,2),:);
+    v3 = mesh.vertices(mesh.faces(f,3),:);
     edge1 = v2 - v1;
     edge2 = v3 - v1;
     faceNormals(f, :) = cross(edge1, edge2);
 end
 
 % Step 2: Initialize vertex normals
-numVertices = size(mesh.p, 1);
+numVertices = size(mesh.vertices, 1);
 vertexNormals = zeros(numVertices, 3);
 
 % Accumulate face normals for each vertex
 for f = 1:numFaces
     for j = 1:3
-        vertexNormals(mesh.e(f, j), :) = vertexNormals(mesh.e(f, j), :) + faceNormals(f, :);
+        vertexNormals(mesh.faces(f, j), :) = vertexNormals(mesh.faces(f, j), :) + faceNormals(f, :);
     end
 end
 
@@ -36,7 +36,7 @@ for v = 1:numVertices
     end
 end
 
-mesh.nn = vertexNormals;
+mesh.normals = vertexNormals;
 
 
 %% Load E-fields
@@ -44,13 +44,13 @@ mesh.nn = vertexNormals;
 data = import_Efield_data(E_path);
 
 % Load mesh indices
-mesh_indices = data(18);
-mesh_indices = str2num(mesh_indices)'+1;
+ROI_indices = data(18);
+ROI_indices = str2num(ROI_indices)'+1;
 
 % Load e-field set
 str = char(data(16));
 E_matrix = reshape(str2num(str),[],5,3);
-E_matrix = E_matrix(mesh_indices,:,:);
+E_matrix = E_matrix(ROI_indices,:,:);
 cell_E_matrix = {};
 for i = 1:size(E_matrix,2)
     cell_E_matrix{i} = squeeze(E_matrix(:,i,:))*1e-3;
@@ -65,15 +65,16 @@ ds_ratio = 16;
 f=figure(1);clf
 f.Position(3:4)=[1600,1000];
 tiledlayout(2,3,"TileSpacing","none")
-
+ROI_mesh = mesh.vertices(ROI_indices,:);
+mesh_inds = subsample_mesh(ROI_mesh,0.005);
 for i = 1:size(E_matrix,2)
     nexttile
-    E_plot = zeros(size(pos));
-    E_plot(mesh_indices,:) = squeeze(E_matrix(:,i,:));
+    E_plot = zeros(size(vertices));
+    E_plot(ROI_indices,:) = squeeze(E_matrix(:,i,:));
     E_plot_mag = sqrt(sum(E_plot.^2,2));
-    hp = patch('Faces',mesh.e,'Vertices',mesh.p,'FaceVertexCData',E_plot_mag,'FaceColor','interp','LineStyle','none');
+    hp = patch('Faces',mesh.faces,'Vertices',mesh.vertices,'FaceVertexCData',E_plot_mag,'FaceColor','interp','LineStyle','none');
     hold on
-    quiver3(downsample(mesh.p(mesh_indices,1),ds_ratio),downsample(mesh.p(mesh_indices,2),ds_ratio),downsample(mesh.p(mesh_indices,3),ds_ratio),downsample(E_plot(mesh_indices,1),ds_ratio),downsample(E_plot(mesh_indices,2),ds_ratio),downsample(E_plot(mesh_indices,3),ds_ratio),2,'filled','Color',[0.70,0.70,0.70],'MaxHeadSize',1)
+    quiver3(ROI_mesh(mesh_inds,1),ROI_mesh(mesh_inds,2),ROI_mesh(mesh_inds,3),E_plot(ROI_indices(mesh_inds),1),E_plot(ROI_indices(mesh_inds),2),E_plot(ROI_indices(mesh_inds),3),2,'filled','Color',[0.70,0.70,0.70],'MaxHeadSize',1)
     colormap("parula")
     axis('tight','equal','off');
     camlight

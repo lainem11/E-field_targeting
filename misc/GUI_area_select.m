@@ -3,26 +3,23 @@ function p_inds = GUI_area_select(mesh,data,va,brushsize)
 % Function for interactively selecting mesh indices by brushing over the
 % mesh.
 %
-% INPUT:        mesh = Structure that contains mesh vertices in mesh.p,
-%                      faces in mesh.e and vertex normals in mesh.nn.
-%               data (optional) = Datapoints to plot with size mesh.p.
+% Inputs:       mesh - Structure that contains mesh vertices in mesh.vertices,
+%                       faces in mesh.faces and face normals in mesh.normals.
+%               data (optional) - Datapoints to plot with size mesh.vertices.
 %               va = view angle for the plot
 %               brushsize = Vertex selection distance from cursor
 %
-% OUTPUT:       p_inds = indices of selected mesh vertices.
+% Output:       p_inds = indices of selected mesh vertices.
 %
-% v290922 Mikael Laine
-%
-
 if nargin == 1
-    data = ones(size(mesh.p,1),1);
+    data = ones(size(mesh.vertices,1),1);
     % Set view angle with average mesh normal
-    N = mean(mesh.nn,1,'Omitnan');
+    N = mean(mesh.normals,1,'Omitnan');
     N = N/norm(N);
     va = [-vectorAngle([0,-1,0],N),vectorAngle([-1,0,0],N)];
     brushsize = 0.005; % mm radius
 elseif nargin == 2
-    N = mean(mesh.nn,1,'Omitnan');
+    N = mean(mesh.normals,1,'Omitnan');
     N = N/norm(N);
     va = [-vectorAngle([0,-1,0],N),vectorAngle([-1,0,0],N)];
     brushsize = 0.005; % mm radius
@@ -35,7 +32,7 @@ f = figure(99);clf
 set(f,'Position',[sc(3)/4 sc(4)/5 sc(3)/2 sc(4)*2/3])
 
 % Plot mesh
-hp = patch('Faces',mesh.e,'Vertices',mesh.p,'FaceVertexCData',data,'FaceColor','interp','ButtonDownFcn',@brushFcn);
+hp = patch('Faces',mesh.faces,'Vertices',mesh.vertices,'FaceVertexCData',data,'FaceColor','interp','ButtonDownFcn',@brushFcn);
 view(va);
 colormap("parula")
 axis('tight','equal','off');
@@ -58,7 +55,7 @@ while drawMode
         waitfor(f,'UserData');
         pos = get(f,'UserData');
         % Find neighbours
-        dist2point = sqrt(sum((mesh.p-pos).^2,2));
+        dist2point = sqrt(sum((mesh.vertices-pos).^2,2));
         p_ind = find(dist2point < brushsize);
         % Set color vertices
         hp.FaceVertexCData(p_ind) = 0;
@@ -84,12 +81,12 @@ end
                 % End brushing
                 drawMode = 0;
                 hold on
-                plot3(mesh.p(p_inds,1),mesh.p(p_inds,2),mesh.p(p_inds,3),'.r','MarkerSize',10)
+                plot3(mesh.vertices(p_inds,1),mesh.vertices(p_inds,2),mesh.vertices(p_inds,3),'.r','MarkerSize',10)
                 pause(2)
                 close(f)
             case hb_reset
                 % Reset changes
-                hp = patch('Faces',mesh.e,'Vertices',mesh.p,'FaceVertexCData',data,'FaceColor','interp');
+                hp = patch('Faces',mesh.faces,'Vertices',mesh.vertices,'FaceVertexCData',data,'FaceColor','interp');
                 p_inds = [];
         end
         drawnow

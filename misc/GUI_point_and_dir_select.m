@@ -3,41 +3,34 @@ function targets = GUI_point_and_dir_select(mesh,data,va)
 % Function for interactively selecting mesh indices by brushing over the
 % mesh.
 %
-% INPUT:        mesh = Structure that contains mesh vertices in mesh.p,
-%                       faces in mesh.e and face normals in mesh.nn
-%               data (optional) = Datapoints to plot with size mesh.p
-%               va (optional) = view angle
+% Inputs:       mesh - Structure that contains mesh vertices in mesh.vertices,
+%                       faces in mesh.faces and face normals in mesh.normals.
+%               data (optional) - Datapoints to plot with size mesh.vertices.
+%               va (optional) - view angle
 %
-% OUTPUT:       p_ind = selected index
-%               dir = selected direction
-%
-% v290922 Mikael Laine
-%
+% Output:       targets - struct with fields:
+%                   p_ind: vector of selected indices
+%                   dir: (n_vertices,3) matrix of selected directions
 %
 rotSens = 10;  % Arrow rotation sensitivity
 
-
-
-sc = get(0,'screensize');
 f = figure(99);clf
 f.Position(3:4)=[1200,800];
-%set(f,'Position',[sc(3)/4 sc(4)/5 sc(3)/2 sc(4)*2/3])
 
 % Plot mesh
 if nargin == 1
-    data = ones(size(mesh.p,1),1);
+    data = ones(size(mesh.vertices,1),1);
     % Set view angle with average mesh normal
-    N = mean(mesh.nn,1,'Omitnan');
+    N = mean(mesh.normals,1,'Omitnan');
     N = N/norm(N);
     va = [-vectorAngle([0,-1,0],N),vectorAngle([-1,0,0],N)];
 elseif nargin==2
-    N = mean(mesh.nn,1,'Omitnan');
+    N = mean(mesh.normals,1,'Omitnan');
     N = N/norm(N);
     va = [-vectorAngle([0,-1,0],N),vectorAngle([-1,0,0],N)];
 end
 
-
-hp = patch('Faces',mesh.e,'Vertices',mesh.p,'FaceVertexCData',data,'FaceColor','interp');
+hp = patch('Faces',mesh.faces,'Vertices',mesh.vertices,'FaceVertexCData',data,'FaceColor','interp');
 view(va);
 colormap("parula")
 axis('tight','equal','off');
@@ -63,11 +56,10 @@ while drawMode
         waitfor(f,'UserData');
         pos = get(f,'UserData');
         set(dh,'enable','off');
-        p_ind = find(all(mesh.p == pos,2),1);
+        p_ind = find(all(mesh.vertices == pos,2),1);
         p_inds = [p_inds;p_ind];
-        %n = mesh.nn(p_ind,:);
         % Take average normal from neighborhood
-        n = mean(mesh.nn(sqrt(sum((mesh.p(p_ind,:)-mesh.p).^2,2)) < 0.03,:),1,'Omitnan');
+        n = mean(mesh.normals(sqrt(sum((mesh.vertices(p_ind,:)-mesh.vertices).^2,2)) < 0.03,:),1,'Omitnan');
         %n=N;
         
         % Set and plot initial direction
@@ -124,7 +116,7 @@ end
                 drawMode = 0;
 
                 for i = 1:length(p_inds)
-                    targets(i).pos = mesh.p(p_inds(i),:);
+                    targets(i).pos = mesh.vertices(p_inds(i),:);
                     targets(i).dir = dirs(i,:);
                 end
 
