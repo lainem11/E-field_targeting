@@ -1,0 +1,20 @@
+# This CITATION.cff file was generated with cffinit.
+# Visit https://bit.ly/cffinit to generate yours today!
+
+cff-version: 1.2.0
+title: E-field targeting
+message: >-
+  If you use this software, please cite it using the
+  metadata from this file.
+type: software
+authors:
+  - given-names: Mikael
+    family-names: Laine
+    email: mikael.h.laine@gmail.com
+    affiliation: Aalto University
+    orcid: 'https://orcid.org/0009-0003-5534-9170'
+repository-code: 'https://github.com/lainem11/E-field_targeting'
+abstract: Focusing a superimposed E-field on a target.
+license: MIT
+version: '1.0'
+date-released: '2025-04-09'
