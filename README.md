@@ -1,6 +1,6 @@
-# E-field targeting v1.0.0
+# E-field targeting v1.1.0
 
-[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.15228154.svg)](https://doi.org/10.5281/zenodo.15228154)
+[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.15228343.svg)](https://doi.org/10.5281/zenodo.15228343)
 
 This repository is used to solve optimization problems where a set of electric fields (E-fields) are superimposed to focus the E-field at a target location and in target direction. It is specifically designed for multi-coil transcranial magnetic stimulation where the E-fields are induced in the cortex usign a set of coils, but it could be used for other applications as well.
 
@@ -17,6 +17,10 @@ Spherical targeting assumes E-fields are generated on a spherical surface, which
 ## Targeting in a complex geometry
 
 The example_complex_geom.m has an example of targeting in a general 3D surface, but example E-fields are not currently provided.
+
+Targeting in complex geometry treats the E-field directions differently from the spherical case. As the induced E-fields occur primarily on a plane, the target direction is adjusted to set realizable goal. This allows constraints to be satisfied, which then gives room for minimizing the objective. The plane is determined by finding the closest vertex to the target location, and selecting two of the largest principal components of the provided E-field set to form the axis of the 2D subspace, where the E-field directions are calculated.
+
+In addition, as the induced E-field strength is much greater in gyri, the target location may not be realizable. Therefore, when using weighted center of gravity (WCOG, see below) as the stimulation location metric, the mesh coordinates are projected onto a 2D plane, defined by the average mesh face normal.
 
 ## Optimization constraints and objectives
 
@@ -58,4 +62,4 @@ The optimization function has an option limit the E-field magnitude in specified
 $$\text{minimize } f(w) =  \sum_{i=1}^k (\frac{w^i}{\text{max}(|w|)})^2 + \text{mean}(\hat{E}\_{\text{norm, S'}})*10$$
 
 **Focality**\
-$$\text{minimize } f(w) = \sum_{n=1}^N \hat{E}^{2}\_{\text{norm, n}} + \sum_{m \in S'} \hat{E}^{2}\_{\text{norm, m}}$$
+$$\text{minimize } f(w) = \text{mean}(\hat{E}^{2}\_{\text{norm}}) + \text{mean}(\hat{E}^{2}\_{\text{norm, S'}})$$
