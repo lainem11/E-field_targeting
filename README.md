@@ -37,8 +37,6 @@ $$O_{loc} = \frac{\sum_{n=1}^N S_n \hat{E}^q_{\text{norm, n}}}{\sum_{n=1}^N \hat
 **Max**\
 $$O_{loc} = S_{\text{argmax } E_{\text{norm}}}$$
 
-When using optimize_Efield_complex_geom.m with the WCOG setting, the coordinate space $S$ is projected onto a plane defined by the average vertex normal in the neighbourhood of the target location and mapped into a two dimensional subspace. This flattening of the coordinate space removes the depth component from the stimulation location calculation.
-
 ### Defining constraints
 Given a target location $T_{loc}$ and direction $T_{dir}$ the optimization is constrained such that:\
 $$|T_{loc} - O_{loc}| < \delta\_{loc}$$, and\
