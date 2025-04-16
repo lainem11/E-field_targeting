@@ -68,7 +68,7 @@ while drawMode
 %             delete([hpoint,hquiv]);
 %         end
         hpoint = plot3(pos(1),pos(2),pos(3),'.r','MarkerSize',30);
-        hquiv = quiver3(gca,pos(1),pos(2),pos(3),dir(1),dir(2),dir(3),0.04,'r-','filled','LineWidth',2);
+        hquiv = quiver3(gca,pos(1),pos(2),pos(3),dir(1),dir(2),dir(3),0.04,'r-','filled','LineWidth',2,'MaxHeadSize',1);
         rmat_l = rotationMatrixAxis3D(rotSens*pi/180,n);
         rmat_r = rotationMatrixAxis3D(-rotSens*pi/180,n);
         set(f,'KeyPressFcn',@rotateArrow)

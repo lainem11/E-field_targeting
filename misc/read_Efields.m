@@ -1,5 +1,5 @@
-function [mesh, cell_E_matrix, ROI_indices, coil] = read_Efields(headmodel_path,E_path)
-addpath(genpath(pwd))
+function [E_matrix,mesh,E_mesh,ROI,coil] = read_Efields(headmodel_path,E_path)
+
 %% Load mesh and calculate face normals
 [vertices,faces] = convert_custom_bin_to_vtk(headmodel_path);
 mesh.vertices = vertices;
@@ -44,37 +44,40 @@ mesh.normals = vertexNormals;
 data = import_Efield_data(E_path);
 
 % Load mesh indices
-ROI_indices = data(18);
-ROI_indices = str2num(ROI_indices)'+1;
+ROI = data(18);
+ROI = str2num(ROI)'+1;
 
 % Load e-field set
 str = char(data(16));
 E_matrix = reshape(str2num(str),[],5,3);
-E_matrix = E_matrix(ROI_indices,:,:);
-cell_E_matrix = {};
-for i = 1:size(E_matrix,2)
-    cell_E_matrix{i} = squeeze(E_matrix(:,i,:))*1e-3;
-end
+E_matrix = E_matrix(ROI,:,:)*1e-3;
+E_matrix = permute(E_matrix,[2,1,3]);
+
+% Region-of-interest mesh
+E_mesh.vertices = mesh.vertices(ROI,:);
+E_mesh.normals = mesh.normals(ROI,:);
 
 % Read coil position
 coil.pos_str = str2num(data(6));
 coil.rot_str = str2num(data(4));
 
+% Plot
 va = [-83.8370   52.7484];
 ds_ratio = 16;
 f=figure(1);clf
 f.Position(3:4)=[1600,1000];
 tiledlayout(2,3,"TileSpacing","none")
-ROI_mesh = mesh.vertices(ROI_indices,:);
+ROI_mesh = mesh.vertices(ROI,:);
 mesh_inds = subsample_mesh(ROI_mesh,0.005);
-for i = 1:size(E_matrix,2)
+
+for i = 1:size(E_matrix,1)
     nexttile
     E_plot = zeros(size(vertices));
-    E_plot(ROI_indices,:) = squeeze(E_matrix(:,i,:));
+    E_plot(ROI,:) = squeeze(E_matrix(i,:,:));
     E_plot_mag = sqrt(sum(E_plot.^2,2));
     hp = patch('Faces',mesh.faces,'Vertices',mesh.vertices,'FaceVertexCData',E_plot_mag,'FaceColor','interp','LineStyle','none');
     hold on
-    quiver3(ROI_mesh(mesh_inds,1),ROI_mesh(mesh_inds,2),ROI_mesh(mesh_inds,3),E_plot(ROI_indices(mesh_inds),1),E_plot(ROI_indices(mesh_inds),2),E_plot(ROI_indices(mesh_inds),3),2,'filled','Color',[0.70,0.70,0.70],'MaxHeadSize',1)
+    quiver3(ROI_mesh(mesh_inds,1),ROI_mesh(mesh_inds,2),ROI_mesh(mesh_inds,3),E_plot(ROI(mesh_inds),1),E_plot(ROI(mesh_inds),2),E_plot(ROI(mesh_inds),3),2,'filled','Color',[0.70,0.70,0.70],'MaxHeadSize',1)
     colormap("parula")
     axis('tight','equal','off');
     camlight

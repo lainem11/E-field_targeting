@@ -1,4 +1,8 @@
-function sparse_indices = subsample_mesh(nodes, spacing)    
+function sparse_indices = subsample_mesh(nodes, spacing)
+
+    if nargin == 1
+        spacing = 0.005;
+    end
     % Number of nodes
     num_nodes = size(nodes, 1);
     
