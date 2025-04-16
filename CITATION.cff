@@ -16,5 +16,5 @@ authors:
 repository-code: 'https://github.com/lainem11/E-field_targeting'
 abstract: Focusing a superimposed E-field on a target.
 license: MIT
-version: '1.0'
+version: '1.1.0'
 date-released: '2025-04-09'
