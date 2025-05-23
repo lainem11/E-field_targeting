@@ -1,4 +1,4 @@
-# E-field targeting v1.1.0
+# E-field targeting v1.1.1
 
 [![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.15228343.svg)](https://doi.org/10.5281/zenodo.15228343)
 
@@ -8,19 +8,35 @@ This repository is used to solve optimization problems where a set of electric f
 
 Spherical targeting assumes E-fields are generated on a spherical surface, which may be used as an approximation of a more complex surface. The example_spherical.m script creates an example set of E-fields (akin to https://doi.org/10.1016/j.brs.2018.03.014) and solves the optimization problem for a few example targets.
 
-![example_spherical_fields](<https://github.com/user-attachments/assets/7d29a86e-3df5-490f-8ba6-19e7e4b6e390>)
+![example_simple_fields](https://github.com/user-attachments/assets/2c97a65e-d50d-4ccf-886b-fcc55d2ae944)
+
 *Figure 1. A set of E-fields that need to be summed up with appropriate weightings to focus the E-field on target.*
 
-![example_spherical_results](https://github.com/user-attachments/assets/54c452cf-d013-433e-9973-62a579234e5e)
+![example_simple_results](https://github.com/user-attachments/assets/5d3f9756-3cf0-426e-bc01-45a69d0bdfcb)
+
 *Figure 2. Results of the example script.*
 
 ## Targeting in a complex geometry
 
-The example_complex_geom.m has an example of targeting in a general 3D surface, but example E-fields are not currently provided.
-
-Targeting in complex geometry treats the E-field directions differently from the spherical case. As the induced E-fields occur primarily on a plane, the target direction is adjusted to set realizable goal. This allows constraints to be satisfied, which then gives room for minimizing the objective. The plane is determined by finding the closest vertex to the target location, and selecting two of the largest principal components of the provided E-field set to form the axis of the 2D subspace, where the E-field directions are calculated.
+The example_complex_geom.m has an example of targeting in a more complicated 3D surface. Targeting in complex geometry treats the E-field directions differently from the spherical case. As the induced E-fields occur primarily on a plane, the target direction is adjusted to set realizable goal. This allows constraints to be satisfied, which then gives room for minimizing the objective. The plane is determined by finding the closest vertex to the target location, and selecting two of the largest principal components of the provided E-field set to form the axis of the 2D subspace, where the E-field directions are calculated.
 
 In addition, as the induced E-field strength is much greater in gyri, the target location may not be realizable. Therefore, when using weighted center of gravity (WCOG, see below) as the stimulation location metric, the mesh coordinates are projected onto a 2D plane, defined by the average mesh face normal.
+
+![example_complex_setup](https://github.com/user-attachments/assets/a3df5151-2caf-4e45-8708-d3715d3761c2)
+
+*Figure 3. Example specification of the E-field targets for conditioning stimului and a test stimulus. E-field is resticted near the test stimulus when generating the conditioning stimuli.*
+
+![example_complex_fields](https://github.com/user-attachments/assets/72ce6f34-fd1a-4c02-a5d6-a49763d6b119)
+
+*Figure 4. Example of a set of E-fields on a complex surface.*
+
+![example_complex_results](https://github.com/user-attachments/assets/ba64f615-e41b-4563-8fe0-55c06bcdbc04)
+
+*Figure 5. Results of the E-field targeting example with the conditioning stimuli (CS).*
+
+![example_complex_results_TS](https://github.com/user-attachments/assets/7c8573d2-c458-4a57-9031-46064f522049)
+
+*Figure 6. Results of the E-field targeting example with the test stimulus (TS).*
 
 ## Optimization constraints and objectives
 
