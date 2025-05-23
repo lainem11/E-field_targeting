@@ -18,7 +18,7 @@ function fieldVectors = generate_ring_field(halfSphere, theta, phi)
     % Extract vertices and determine radius
     vertices = halfSphere.vertices;
     numVertices = size(vertices, 1);
-    radius = max(vertices(:, 3));  % Top at z = R
+    radius = 0.07;%max(sqrt(sum(vertices.^2,2)));  % Top at z = R
     
     % Define base offset distance
     offset = radius / 2;
@@ -29,8 +29,8 @@ function fieldVectors = generate_ring_field(halfSphere, theta, phi)
     cy = x01 * sin(phi);
     
     % Toroid parameters
-    R_toroid = radius / 2;
-    sigma = radius / 2;
+    R_toroid = radius / 2.5;
+    sigma = radius / 2.5;
     
     % Initialize field vectors
     fieldVectors = zeros(numVertices, 3);

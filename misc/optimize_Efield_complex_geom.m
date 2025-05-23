@@ -29,7 +29,6 @@ function results = optimize_Efield_complex_geom(pos,direction,mesh,E_set,varargi
 %             weights: Vector of shape (n_coils) with E-field weights.
 %             inputs: Struct of the function inputs.
 %             err: Struct of final stimulation location and angle errors.
-%             N: Vector of the mesh average normal around the target.
 %
 % Computation takes typically 5-20s. The optimization algorithm used is stochastic:
 % set a seed to produce deterministic output.
@@ -49,7 +48,7 @@ p = inputParser;
 addRequired(p,'pos',@(x) isnumeric(x))
 addRequired(p,'direction',@(x) isnumeric(x) && length(x)==3)
 addRequired(p,'mesh',@(x) isstruct(x))
-addRequired(p,'EFs',@(x) isnumeric(x))
+addRequired(p,'E_set',@(x) isnumeric(x))
 addParameter(p,'StimMetric',defaultStimMetric, @(x) ischar(x))
 addParameter(p,'RestrictEF',defaultRestrictEF, @(x) isnumeric(x))
 addParameter(p,'SaveDir',defaultSaveDir,@(x) ischar(x) || isstring(x))
@@ -140,7 +139,6 @@ results.weights = x';
 results.target = target;
 results.inputs = p.Results;
 results.err = err;
-results.N = N;
 
 if ~isempty(savedir)
     if not(isfolder(savedir))

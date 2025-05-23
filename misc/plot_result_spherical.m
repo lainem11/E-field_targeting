@@ -28,10 +28,7 @@ for t = 1:N_targets
     target.Dir = centerDir*Rmatz(pho)*Rmatx(phi)*Rmaty(pha);
 
     % Calculate centroid position and E field direction
-    E = 0;
-    for i = 1:length(E_set)
-        E = E + E_set{i} * x(i);
-    end
+    E = squeeze(sum(E_set.*x',1));
     Emag = sqrt(sum(E.^2,2));
     [Emax,ind_Emax] = max(Emag);
     Emagn = Emag/Emax;
@@ -65,6 +62,8 @@ for t = 1:N_targets
     p3 = plot3(centroid_p(1),centroid_p(2),centroid_p(3)+0.001,'.','Color',"#D95319",'MarkerSize',20);
     q3 = quiver3(centroid_p(1),centroid_p(2),centroid_p(3)+0.001,Edir(1),Edir(2),Edir(3),0.01,"filled",'Color',"#D95319",'MaxHeadSize',1,'LineWidth',1.5);
     axis('tight','equal');
+    material dull
+    
     c1 = colorbar;
     c1.TickDirection = 'in';
     c1.LineWidth = 1.5;

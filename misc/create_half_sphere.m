@@ -1,4 +1,4 @@
-function halfSphere = create_half_sphere(radius, numPoints)
+function halfSphere = create_half_sphere()
     % Creates a half-spherical surface (upper hemisphere)
     % Inputs:
     %   radius - radius of the sphere (default: 1)
@@ -9,13 +9,8 @@ function halfSphere = create_half_sphere(radius, numPoints)
     %       .faces - triangulation connectivity
     %       .normals - vertex normals
     
-    % Set default values if not provided
-    if nargin < 1
-        radius = 1;
-    end
-    if nargin < 2
-        numPoints = 20;
-    end
+    radius = 0.07;
+    numPoints = 50;
     
     % Create spherical coordinates for upper hemisphere
     [theta, phi] = meshgrid(linspace(0, 2*pi, numPoints), ...    % azimuthal angle (full circle)

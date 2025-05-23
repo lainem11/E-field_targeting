@@ -23,10 +23,13 @@ function results = optimize_Efield_spherical(target_shift,vertices,E_set,varargi
 %           AngleConstr - Number in degrees to constraint stimulation direction 
 %               within a range of the specified target. Default is 5.
 % Output: 
-%       x = Vector of shape (n_E_set) with E-field weights.
+%         results - Struct containing optimization results.
+%             weights: Vector of shape (n_coils) with E-field weights.
+%             target: Struct with the coordinate and direction vectors for the target.
+%             inputs: Struct of the function inputs.
+%             err: Struct of final stimulation location and angle errors.
 %
-%
-% Computation takes typically 5-20s. The optimization algorithm used is stochastic:
+% Computation takes typically 2-10s. The optimization algorithm used is stochastic:
 % set a seed to produce deterministic output.
 %
 myStream = RandStream('mt19937ar','Seed',0);
@@ -44,7 +47,7 @@ defaultAngleConstr = 5;
 p = inputParser;
 addRequired(p,'target_shift',@(x) isnumeric(x) && length(x)==3)
 addRequired(p,'pos',@(x) isnumeric(x))
-addRequired(p,'E_set',@(x) iscell(x))
+addRequired(p,'E_set',@(x) isnumeric(x))
 addParameter(p,'StimMetric',defaultStimMetric, @(x) ischar(x))
 addParameter(p,'RestrictEF',defaultRestrictEF, @(x) isnumeric(x))
 addParameter(p,'SaveDir',defaultSaveDir,@(x) ischar(x) || isstring(x))
@@ -89,7 +92,7 @@ end
 
 %% Optimize weights
 
-Nc = length(E_set);
+Nc = size(E_set,1);
 lb = [];
 ub = [];
 
@@ -103,10 +106,7 @@ options = optimoptions('ga','PopulationSize',100,'CrossoverFcn','crossoverlaplac
 [x] = ga(@objectiveFcn,Nc,[],[],[],[],lb,ub,@locNdirConsFcn,options);
 
 % Calculate error
-E = 0;
-for i = 1:Nc
-    E = E +  double(E_set{i}).*x(i);
-end
+E = squeeze(sum(E_set.*x',1));
 Emag = sqrt(sum(E.^2,2));
 [Emag_max,Emag_maxi] = max(Emag);
 Emagn = Emag/Emag_max;
@@ -156,10 +156,7 @@ end
     end
 
     function obj = objectiveFcn(x)
-        E_f = 0;
-        for k = 1:Nc
-            E_f = E_f +  double(E_set{k}).*x(k);
-        end
+        E_f = squeeze(sum(E_set.*x',1));
         Emag_f = sqrt(sum(E_f.^2,2));
         Emagn_f = Emag_f/max(Emag_f);
         switch objectiveType
@@ -185,10 +182,7 @@ end
 
     function [c,ceq] = locNdirConsFcn(x)
         % Calculate Efield constraints
-        E_f = 0;
-        for k = 1:Nc
-            E_f = E_f + double(E_set{k}).*x(k);
-        end
+        E_f = squeeze(sum(E_set.*x',1));
         Emag_f = sqrt(sum(E_f.^2,2));
         [maxEmag_f,imaxEmag_f] = max(Emag_f);
         Emagn_f = Emag_f/maxEmag_f;
