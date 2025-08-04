@@ -19,6 +19,7 @@ for i = 1:length(labels)
         dir = orientation./norm(orientation);
         targets(count).pos = pos;
         targets(count).dir = dir';
+        targets(count).label = labels{i};
         count = count + 1;
     end
 end

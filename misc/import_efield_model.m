@@ -60,7 +60,7 @@ ROI_mesh.normals = mesh.normals(ROI,:);
 % Calculate camera angle facing the ROI
 N = mean(ROI_mesh.normals,1,'Omitnan');
 N = N/norm(N);
-ROI_mesh.view_angle = [-calculate_vector_angle([0,-1,0],N),calculate_vector_angle([-1,0,0],N)];
+mesh.view_angle = [-calculate_vector_angle([0,-1,0],N),calculate_vector_angle([-1,0,0],N)];
 
 % Read coil position
 coil.pos_str = str2num(data(6));
@@ -86,7 +86,7 @@ for i = 1:size(efield_set,1)
     camlight
     lighting gouraud
     material dull
-    view(ROI_mesh.view_angle)
+    view(mesh.view_angle)
 
     % Plot coil
     plot3(coil.pos_str(1),coil.pos_str(2),coil.pos_str(3),'.','Color',[0.0,1.0,0.0],'MarkerSize',30)
