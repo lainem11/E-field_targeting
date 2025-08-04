@@ -1,6 +1,6 @@
-# E-field targeting v1.1.1
+# E-field targeting v1.1.2
 
-[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.15494941.svg)](https://doi.org/10.5281/zenodo.15494941)
+[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.16739105.svg)](https://doi.org/10.5281/zenodo.16739105)
 
 This repository is used to solve optimization problems where a set of electric fields (E-fields) are superimposed to focus the E-field at a target location and in target direction. It is specifically designed for multi-coil transcranial magnetic stimulation where the E-fields are induced in the cortex usign a set of coils, but it could be used for other applications as well.
 
@@ -37,6 +37,10 @@ In addition, as the induced E-field strength is much greater in gyri, the target
 ![example_complex_results_TS](https://github.com/user-attachments/assets/7c8573d2-c458-4a57-9031-46064f522049)
 
 *Figure 6. Results of the E-field targeting example with the test stimulus (TS).*
+
+## Importing E-fields and stimulation targets
+
+See example_InVesalius_exports.m for example that assumes you have exported files from InVesalius. You need to fill in the correct filepaths.
 
 ## Optimization constraints and objectives
 
