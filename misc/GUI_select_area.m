@@ -19,13 +19,19 @@ sc = get(0,'screensize');
 f = figure(99);clf
 set(f,'Position',[sc(3)/4 sc(4)/5 sc(3)/2 sc(4)*2/3])
 
+if ~isfield(targeting_model,'ROI')
+    ROI = 1:size(targeting_model.mesh.vertices,1);
+else
+   ROI = targeting_model.ROI; 
+end
+
 % Initialize arrays for legend handles and labels
 legend_handles = [];
 legend_labels = {};
 
 % Plot mesh
 data = zeros(size(mesh.vertices,1),1);
-data(targeting_model.ROI) = 1;
+data(ROI) = 1;
 hp = patch('Faces',mesh.faces,'Vertices',mesh.vertices,'FaceVertexCData',data,'FaceColor','interp','ButtonDownFcn',@brushFcn);
 hold on
 
@@ -45,9 +51,9 @@ if isfield(targeting_model,'CS_targets')
     end
     if isfield(targeting_model.CS_targets,'restrict_inds') && ~isempty(targeting_model.CS_targets(1).restrict_inds)
         % Plot the restricted area
-        p1_1 = plot3(targeting_model.ROI_mesh.vertices(CS_targets(1).restrict_inds,1),...
-                    targeting_model.ROI_mesh.vertices(CS_targets(1).restrict_inds,2),...
-                    targeting_model.ROI_mesh.vertices(CS_targets(1).restrict_inds,3),...
+        p1_1 = plot3(targeting_model.mesh.vertices(ROI(CS_targets(1).restrict_inds),1),...
+                    targeting_model.ROI_mesh.vertices(ROI(CS_targets(1).restrict_inds),2),...
+                    targeting_model.ROI_mesh.vertices(ROI(CS_targets(1).restrict_inds),3),...
                     '.','Color','#7db1d4','MarkerSize',10);
         
         % Add the handle for the restricted area to the legend
@@ -71,9 +77,9 @@ if isfield(targeting_model,'TS_targets')
     end
     if isfield(targeting_model.TS_targets,'restrict_inds') && ~isempty(targeting_model.TS_targets(1).restrict_inds)
         % Plot the restricted area
-        p2_1 = plot3(targeting_model.ROI_mesh.vertices(TS_targets(1).restrict_inds,1),...
-                    targeting_model.ROI_mesh.vertices(TS_targets(1).restrict_inds,2),...
-                    targeting_model.ROI_mesh.vertices(TS_targets(1).restrict_inds,3),...
+        p2_1 = plot3(targeting_model.mesh.vertices(ROI(TS_targets(1).restrict_inds),1),...
+                    targeting_model.ROI_mesh.vertices(ROI(TS_targets(1).restrict_inds),2),...
+                    targeting_model.ROI_mesh.vertices(ROI(TS_targets(1).restrict_inds),3),...
                     '.','Color','#d69c83','MarkerSize',10);
         
         % Add the handle for the restricted area to the legend
@@ -87,7 +93,9 @@ if ~isempty(legend_handles)
     legend(legend_handles,legend_labels)
 end
 
-view(targeting_model.mesh.view_angle);
+if isfield(targeting_model.mesh,'view_angle')
+    view(targeting_model.mesh.view_angle);
+end
 colormap(viridis)
 axis('tight','equal','off');
 camlight
@@ -137,7 +145,7 @@ end
                 hold on
                 plot3(mesh.vertices(p_inds,1),mesh.vertices(p_inds,2),mesh.vertices(p_inds,3),'.r','MarkerSize',10)
                 % Transform p_inds to ROI indices
-                p_inds = find(ismember(targeting_model.ROI,p_inds));
+                p_inds = find(ismember(ROI,p_inds));
                 pause(1)
                 close(f)
             case hb_reset

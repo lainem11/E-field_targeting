@@ -4,7 +4,7 @@ function targets = GUI_select_target(targeting_model)
 %
 % Inputs:       targeting_model - Struct that contains fields:
 %                   mesh: Struct with vertices, faces, normals, and view angle.
-%                   ROI: Array of mesh vertex indices matching the E-field
+%                   ROI (optional): Array of mesh vertex indices matching the E-field
 %                       computation region.
 %                   
 %
@@ -17,12 +17,21 @@ rotSens = 10;  % Arrow rotation sensitivity
 f = figure(99);clf
 f.Position(3:4)=[1200,800];
 
+if ~isfield(targeting_model,'ROI')
+    ROI = 1:size(targeting_model.mesh.vertices,1);
+else
+   ROI = targeting_model.ROI; 
+end
+
 % Color the ROI mesh region
 data = zeros(size(targeting_model.mesh.vertices,1),1);
-data(targeting_model.ROI) = 1;
+data(ROI) = 1;
 
 hp = patch('Faces',targeting_model.mesh.faces,'Vertices',targeting_model.mesh.vertices,'FaceVertexCData',data,'FaceColor','interp');
-view(targeting_model.mesh.view_angle);
+
+if isfield(targeting_model.mesh,'view_angle')
+    view(targeting_model.mesh.view_angle);
+end
 
 colormap(viridis)
 axis('tight','equal','off');

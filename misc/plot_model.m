@@ -18,9 +18,15 @@ f.Position(3:4)=[1200,800];
 legend_handles = [];
 legend_labels = {};
 
+if ~isfield(targeting_model,'ROI')
+    ROI = 1:size(targeting_model.mesh.vertices,1);
+else
+   ROI = targeting_model.ROI; 
+end
+
 % Plot mesh
 data = zeros(size(targeting_model.mesh.vertices,1),1);
-data(targeting_model.ROI) = 1;
+data(ROI) = 1;
 patch('Faces',targeting_model.mesh.faces,'Vertices',targeting_model.mesh.vertices,'FaceVertexCData',data,'FaceColor','interp','LineStyle','none');
 hold on
 
@@ -40,9 +46,9 @@ if isfield(targeting_model,'CS_targets')
     end
     if isfield(targeting_model.CS_targets,'restrict_inds')
         % Plot the restricted area
-        p1_1 = scatter3(targeting_model.ROI_mesh.vertices(CS_targets(1).restrict_inds,1),...
-                    targeting_model.ROI_mesh.vertices(CS_targets(1).restrict_inds,2),...
-                    targeting_model.ROI_mesh.vertices(CS_targets(1).restrict_inds,3),...
+        p1_1 = scatter3(targeting_model.mesh.vertices(ROI(CS_targets(1).restrict_inds),1),...
+                    targeting_model.mesh.vertices(ROI(CS_targets(1).restrict_inds),2),...
+                    targeting_model.mesh.vertices(ROI(CS_targets(1).restrict_inds),3),...
                 30, 'filled', 'MarkerFaceColor', '#7db1d4','MarkerEdgeColor','none');
 
         % Add the handle for the restricted area to the legend
@@ -66,10 +72,10 @@ if isfield(targeting_model,'TS_targets')
     end
     if isfield(targeting_model.TS_targets,'restrict_inds')
         % Plot the restricted area
-        p2_1 = scatter3(targeting_model.ROI_mesh.vertices(TS_targets(1).restrict_inds,1),...
-            targeting_model.ROI_mesh.vertices(TS_targets(1).restrict_inds,2),...
-            targeting_model.ROI_mesh.vertices(TS_targets(1).restrict_inds,3),...
-            30, 'filled', 'MarkerFaceColor', '#d69c83','MarkerEdgeColor','none');
+        p2_1 = scatter3(targeting_model.mesh.vertices(ROI(TS_targets(1).restrict_inds),1),...
+                        targeting_model.mesh.vertices(ROI(TS_targets(1).restrict_inds),2),...
+                        targeting_model.mesh.vertices(ROI(TS_targets(1).restrict_inds),3),...
+                        30, 'filled', 'MarkerFaceColor', '#d69c83','MarkerEdgeColor','none');
 
         % Add the handle for the restricted area to the legend
         legend_handles(end+1) = p2_1;
@@ -86,6 +92,8 @@ axis('tight','equal','off');
 camlight
 lighting gouraud
 material dull
-view(targeting_model.mesh.view_angle)
+if isfield(targeting_model.mesh,'view_angle')
+    view(targeting_model.mesh.view_angle);
+end
 colormap(viridis)
 end

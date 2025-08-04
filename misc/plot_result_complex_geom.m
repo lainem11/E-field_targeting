@@ -1,5 +1,5 @@
-function plot_result_complex_geom_updated(targeting_model, results)
-    %PLOT_RESULT_COMPLEX_GEOM_UPDATED Plots targeting results on complex geometries.
+function plot_result_complex_geom(targeting_model, results)
+    %   Plots targeting results on complex geometries.
     %
     %   This function visualizes the results of an E-field targeting simulation
     %   on a 3D mesh. It generates two figures:
@@ -21,6 +21,12 @@ function plot_result_complex_geom_updated(targeting_model, results)
     num_CS_plots = length(targeting_model.CS_targets);
     num_TS_plots = length(targeting_model.TS_targets);
     num_total_plots = length(results);
+
+    if ~isfield(targeting_model,'ROI')
+        ROI = 1:size(targeting_model.mesh.vertices,1);
+    else
+       ROI = targeting_model.ROI; 
+    end
 
     % Pre-calculate indices for quiver arrows to reduce redundant calculations
     arrow_inds = subsample_mesh(targeting_model.mesh.vertices);
@@ -142,11 +148,20 @@ function plot_handles = plot_single_result(ax, result, targeting_model, arrow_in
 
     % --- E-Field Calculation ---
     mesh = targeting_model.mesh;
+
+    if ~isfield(targeting_model,'ROI')
+        ROI = 1:size(targeting_model.mesh.vertices,1);
+    else
+       ROI = targeting_model.ROI; 
+    end
+    
+    N = mean(targeting_model.mesh.normals(ROI,:),1,'omitnan');
+    N = N/norm(N);
     
     % Calculate the E-field based on the optimized weights
     E_ROI = squeeze(sum(targeting_model.efield_set .* result.weights, 1));
     E = zeros(size(mesh.vertices));
-    E(targeting_model.ROI, :) = E_ROI;
+    E(ROI, :) = E_ROI;
 
     % Calculate magnitude and normalize it
     E_mag = vecnorm(E, 2, 2);
@@ -180,11 +195,17 @@ function plot_handles = plot_single_result(ax, result, targeting_model, arrow_in
 
     % 4. Plot the realized (achieved) stimulation centroid and direction
     realized_pos = result.realized_target.p;
+    if dot(N, realized_pos) < 0
+        N = -N;
+    end
+    lifted_realized_pos = realized_pos  + N*0.01;
     realized_dir = result.realized_target.Dir;
-    plot3(ax, realized_pos(1), realized_pos(2), realized_pos(3), '.', 'Color', "#0072BD", 'MarkerSize', 30);
-    q_result = quiver3(ax, realized_pos(1), realized_pos(2), realized_pos(3), ...
+    plot3(ax, lifted_realized_pos(1), lifted_realized_pos(2), lifted_realized_pos(3), '.', 'Color', "#0072BD", 'MarkerSize', 30);
+    q_result = quiver3(ax, lifted_realized_pos(1), lifted_realized_pos(2), lifted_realized_pos(3), ...
         realized_dir(1), realized_dir(2), realized_dir(3), ...
         0.015, 'filled', 'Color', "#0072BD", 'LineWidth', 2, 'MaxHeadSize', 1);
+    plot3([realized_pos(1),lifted_realized_pos(1)],[realized_pos(2),lifted_realized_pos(2)],[realized_pos(3),lifted_realized_pos(3)],'-','Color',"#0072BD",'LineWidth',2)
+        
 
     % 5. Plot the point of maximum E-field
     max_pos = mesh.vertices(E_mag_max_ind, :);
@@ -196,8 +217,8 @@ function plot_handles = plot_single_result(ax, result, targeting_model, arrow_in
     
     % 6. Plot the restricted area, if it exists
     if isfield(result.inputs, 'RestrictEF') && ~isempty(result.inputs.RestrictEF)
-        if isfield(targeting_model, 'ROI_mesh')
-            restrict_vertices = targeting_model.ROI_mesh.vertices(result.inputs.RestrictEF, :);
+        if isfield(targeting_model, 'ROI')
+            restrict_vertices = targeting_model.mesh.vertices(ROI(result.inputs.RestrictEF), :);
             restrict_color = '#EDB120';
             
             p_restrict = scatter3(ax, restrict_vertices(:,1), restrict_vertices(:,2), restrict_vertices(:,3), ...
@@ -210,7 +231,9 @@ function plot_handles = plot_single_result(ax, result, targeting_model, arrow_in
 
     % --- Axes and View Configuration ---
     axis(ax, 'tight', 'equal', 'off');
-    view(ax, targeting_model.mesh.view_angle);
+    if isfield(targeting_model.mesh,'view_angle')
+        view(targeting_model.mesh.view_angle);
+    end
     colormap(ax, viridis); % Use a perceptually uniform colormap
     clim(ax, [0 1]); % IMPORTANT: Set consistent color limits for all subplots
 

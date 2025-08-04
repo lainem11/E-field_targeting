@@ -99,7 +99,6 @@ end
 efield_model.efield_set = efield_set;
 efield_model.mesh = mesh;
 efield_model.ROI = ROI;
-efield_model.ROI_mesh = ROI_mesh;
 efield_model.coil = coil;
 
 function [points, elements] = bin_to_vtk(filename)
