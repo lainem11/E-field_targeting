@@ -39,8 +39,8 @@ targeting_model.TS_targets = GUI_select_target(targeting_model);
 %% Restrict E-field on TS when targeting CS, and vica versa.
 
 % Find indices on mesh
-CS_target_inds = pos2ind(vertcat(targeting_model.CS_targets.pos),targeting_model.ROI_mesh);
-TS_target_inds = pos2ind(vertcat(targeting_model.TS_targets.pos),targeting_model.ROI_mesh);
+CS_target_inds = pos2ind(vertcat(targeting_model.CS_targets.pos),targeting_model.mesh.vertices(targeting_model.ROI,:));
+TS_target_inds = pos2ind(vertcat(targeting_model.TS_targets.pos),targeting_model.mesh.vertices(targeting_model.ROI,:));
 
 % Update the targeting model
 [targeting_model.CS_targets.restrict_inds] = deal(TS_target_inds);
@@ -69,7 +69,7 @@ distance_constr = 0.003; % m
 angle_constr = 10; % deg
 
 % Run optimization
-results = optimize_Efields(targeting_model,distance_constr,angle_constr,run_parallel);
+results = optimize_efields(targeting_model,distance_constr,angle_constr,run_parallel);
 
 plot_result_complex_geom(targeting_model,results)
 
@@ -79,11 +79,17 @@ save(fullfile(subject_root_path,subject_id,"targeting_results.mat"),'results')
 
 %% Helper functions
 
-function targeting_results = optimize_Efields(targeting_model,dist_constr,angle_constr,parallel_flag)
+function targeting_results = optimize_efields(targeting_model,dist_constr,angle_constr,parallel_flag)
 % Parses the targeting_model structure and runs E-field optimization with
 % the specified targets.
 
-mesh = targeting_model.ROI_mesh;
+if isfield(targeting_model,'ROI')
+    mesh.vertices = targeting_model.mesh.vertices(targeting_model.ROI,:);
+    mesh.normals = targeting_model.mesh.normals(targeting_model.ROI,:);
+else
+    mesh = targeting_model.mesh;
+end
+
 efield_set = targeting_model.efield_set;
 
 CS_targets = targeting_model.CS_targets;
@@ -115,12 +121,12 @@ if parallel_flag
         parpool; % Create a parallel pool of workers if not already open
     end
     parfor i = 1:length(targets)
-        targeting_results{i} = optimize_Efield_complex_geom(targets(i).pos,targets(i).dir,mesh,efield_set,'restrictEF',targets(i).restrict_inds,'DistConstr',dist_constr,'AngleConstr',angle_constr);
+        targeting_results{i} = optimize_efield_complex_geom(targets(i).pos,targets(i).dir,mesh,efield_set,'restrictEF',targets(i).restrict_inds,'DistConstr',dist_constr,'AngleConstr',angle_constr);
         targeting_results{i}.label = targets(i).label;
     end
 else
     for i = 1:length(targets)
-        targeting_results{i} = optimize_Efield_complex_geom(targets(i).pos,targets(i).dir,mesh,efield_set,'restrictEF',targets(i).restrict_inds,'DistConstr',dist_constr,'AngleConstr',angle_constr);
+        targeting_results{i} = optimize_efield_complex_geom(targets(i).pos,targets(i).dir,mesh,efield_set,'restrictEF',targets(i).restrict_inds,'DistConstr',dist_constr,'AngleConstr',angle_constr);
         targeting_results{i}.label = targets(i).label;
     end
 end

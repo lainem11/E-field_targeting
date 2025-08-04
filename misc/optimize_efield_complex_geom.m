@@ -1,4 +1,4 @@
-function results = optimize_Efield_complex_geom(pos,direction,mesh,E_set,varargin)
+function results = optimize_efield_complex_geom(pos,direction,mesh,E_set,varargin)
 % Optimizes the weights for each field in the E_set such that their sum
 % focuses E-field at the specified target. The computation mesh can be a
 % complex 3D shape.
@@ -75,7 +75,7 @@ N = N/norm(N);
 % using the E-field principal components at a specific vertex. This 
 % intepretation discards the most energy-intensive E-field dimension.
 % The subspace is defined from the closest vertex the target position.
-closest_vertex = pos2ind(pos,mesh);
+closest_vertex = pos2ind(pos,mesh.vertices);
 E_vertex = squeeze(E_set(:,closest_vertex,:));
 E_centered = E_vertex - sum(E_vertex,1);
 [~, ~, V] = svd(E_centered,"econ");
@@ -98,7 +98,7 @@ switch stimMetric
         % The target in the new 2D system is the origin [0,0]
         target.p = [0,0];
         % Find closest index in mesh
-        loc_i = pos2ind(pos,mesh);
+        loc_i = pos2ind(pos,mesh.vertices);
         target.ind = loc_i;
         target.Dir = direction;
     otherwise

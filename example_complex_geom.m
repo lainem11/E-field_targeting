@@ -60,8 +60,8 @@ function targeting_results = optimize_efields(targeting_model,dist_constr,angle_
 % the specified targets.
 
 if isfield(targeting_model,'ROI')
-    mesh.vertices = targeting_model.mesh.vertices(ROI,:);
-    mesh.normals = targeting_model.mesh.normals(ROI,:);
+    mesh.vertices = targeting_model.mesh.vertices(targeting_model.ROI,:);
+    mesh.normals = targeting_model.mesh.normals(targeting_model.ROI,:);
 else
     mesh = targeting_model.mesh;
 end
