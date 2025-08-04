@@ -1,4 +1,4 @@
-function results = optimize_Efield_spherical(target_shift,vertices,E_set,varargin)
+function results = optimize_efield_spherical(target_shift,vertices,E_set,varargin)
 % Optimizes the weights for each field in the E_set such that their sum
 % focuses E-field at the specified target. Assumes vertices defines a spherical mesh.
 %

@@ -1,12 +1,12 @@
-function plot_Efields(E_set,mesh)
+function plot_efields(efield_set,mesh)
 mesh_inds = subsample_mesh(mesh.vertices,0.005);
-N_E = size(E_set,1);
+N_E = size(efield_set,1);
 f=figure;
 f.Position(3:4) = [1600,300];
 tiledlayout(1,N_E,"TileSpacing","tight")
 axs = [];
 for i = 1:N_E
-    Efield = squeeze(E_set(i,:,:));
+    Efield = squeeze(efield_set(i,:,:));
     Efield_mag = sqrt(sum(Efield.^2,2));
     axs(i) = nexttile;
     hold on

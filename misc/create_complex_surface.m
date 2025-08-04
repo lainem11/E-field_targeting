@@ -16,23 +16,11 @@ function complexSurface = create_complex_surface()
     
     % Apply multiple sine waves for displacement
     numLowFreqWaves = 3;
-    numHighFreqWaves = 0;
     
     % Low frequency waves for large-scale undulations
     for w = 1:numLowFreqWaves
-        f = (rand() * 1 + 1)*10; % frequency between 1 and 2
-        a = (rand() * 1 + 1)*length_constant*0.05; % amplitude between 0.1 and 0.2
-        phi = rand() * 2 * pi; % random direction
-        dx = cos(phi);
-        dy = sin(phi);
-        phase = rand() * 2 * pi; % random phase
-        Z = Z + a * sin(2*pi*f*(dx*X + dy*Y) + phase);
-    end
-    
-    % High frequency waves for finer details
-    for w = 1:numHighFreqWaves
-        f = rand() * 2 + 3; % frequency between 3 and 5
-        a = rand() * 0.05 + 0.05; % amplitude between 0.05 and 0.1
+        f = (rand() * 1 + 1)*10;
+        a = (rand() * 1 + 1)*length_constant*0.05;
         phi = rand() * 2 * pi; % random direction
         dx = cos(phi);
         dy = sin(phi);
@@ -61,16 +49,32 @@ function complexSurface = create_complex_surface()
         end
     end
     
-    % Compute face normals
+    % Compute face normals and ensure they point outwards
     numFaces = size(faces, 1);
     faceNormals = zeros(numFaces, 3);
     for f = 1:numFaces
-        v1 = vertices(faces(f, 1), :);
-        v2 = vertices(faces(f, 2), :);
-        v3 = vertices(faces(f, 3), :);
+        v1_idx = faces(f, 1);
+        v2_idx = faces(f, 2);
+        v3_idx = faces(f, 3);
+        
+        v1 = vertices(v1_idx, :);
+        v2 = vertices(v2_idx, :);
+        v3 = vertices(v3_idx, :);
+        
         vec1 = v2 - v1;
         vec2 = v3 - v1;
+        
         normal_f = cross(vec1, vec2);
+        
+        % --- Start of the added check ---
+        % Take a point on the face (v1) and check its direction from the origin.
+        % If the dot product of the normal and the position vector is negative,
+        % the normal is pointing towards the origin, so we flip it.
+        if dot(normal_f, v1) < 0
+            normal_f = -normal_f; % Flip the normal to point outwards
+        end
+        % --- End of the added check ---
+        
         norm_f = norm(normal_f);
         if norm_f > 0
             faceNormals(f, :) = normal_f / norm_f;

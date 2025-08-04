@@ -1,4 +1,4 @@
-function results = optimize_Efield_complex_geom(pos,direction,mesh,E_set,varargin)
+function results = optimize_efield_complex_geom(pos,direction,mesh,E_set,varargin)
 % Optimizes the weights for each field in the E_set such that their sum
 % focuses E-field at the specified target. The computation mesh can be a
 % complex 3D shape.
@@ -75,7 +75,7 @@ N = N/norm(N);
 % using the E-field principal components at a specific vertex. This 
 % intepretation discards the most energy-intensive E-field dimension.
 % The subspace is defined from the closest vertex the target position.
-[~,closest_vertex] = min(sqrt(sum((mesh.vertices-pos).^2,2)));
+closest_vertex = pos2ind(pos,mesh.vertices);
 E_vertex = squeeze(E_set(:,closest_vertex,:));
 E_centered = E_vertex - sum(E_vertex,1);
 [~, ~, V] = svd(E_centered,"econ");
@@ -92,11 +92,13 @@ switch stimMetric
         target.p = mesh.vertices(closest_vertex,:);
         target.Dir = direction;
     case 'WCOG'
-        % Project mesh to the average normal plane and transform to 2D.
-        mesh_vertices = projectAndFlatten(mesh.vertices,N);
-        target.p = projectAndFlatten(pos,N);
+        plane_origin = pos;
+        % Project mesh vertices to 2D relative to the plane_origin
+        [mesh_vertices, projection_basis] = projectAndFlatten(mesh.vertices,N,plane_origin);
+        % The target in the new 2D system is the origin [0,0]
+        target.p = [0,0];
         % Find closest index in mesh
-        [~,loc_i] = min(sqrt(sum((mesh.vertices-pos).^2,2)));
+        loc_i = pos2ind(pos,mesh.vertices);
         target.ind = loc_i;
         target.Dir = direction;
     otherwise
@@ -128,15 +130,32 @@ err.location = 1000*sqrt(sum((target.p-loc).^2,2));         % mm
 err.angle = calculate_vector_angle(target.Dir,E_dir_2d);    % deg
 fprintf('Constraints: Loc: %.2f mm, Angle: %.2f deg, Max: %.2f mm.   Result: Loc: %.2f mm, Angle: %.2f deg, Max: %.2f.\n',distConstr*1000,angleConstr,10,err.location,err.angle,1000*norm(mesh_vertices(E_max_ind,:)-loc))
 
-% Reconstruct target direction in 3D
-target.Dir = V * direction';
+% Reconstruct target in 3D
+realized_target.Dir = dir;
+switch stimMetric
+    case 'Max'
+        [~,~,loc_i] = E_to_mag(E);
+        realized_target.p = mesh.vertices(loc_i,:);
+    case 'WCOG'
+        % Transform the 2D location 'loc' using the basis
+        loc_3d_shifted = (projection_basis * loc')';
+        % Add the plane's origin back to get the final 3D coordinates
+        realized_target.p = loc_3d_shifted + plane_origin;
+end
 
 % Normalize weights to produce E-field of 1.
 x = x/norm(E(E_max_ind,:));
 
+% Calculate goodness of E-field restriction
+if ~isempty(restrictEF)
+    realized_target.restriction_strength = mean(sqrt(sum(E(restrictEF,:).^2,2)))/norm(E(E_max_ind,:));
+else
+    realized_target.restriction_strength = NaN;
+end
+
 % Store output
 results.weights = x';
-results.target = target;
+results.realized_target = realized_target;
 results.inputs = p.Results;
 results.err = err;
 
@@ -151,46 +170,43 @@ if ~isempty(savedir)
 end
 
 %% Functions
-    function coordinates = projectAndFlatten(V, N)
-        % Projects 3D vertices onto a plane and maps to 2D.
+    function [coordinates, basis] = projectAndFlatten(V, N, p0)
+        % Projects 3D vertices onto a plane defined by normal N and point p0.
         %
         % Inputs:
-        %   V - Matrix of shape (n_vertices, 3) with 3D vertex coordinates.
-        %   N - Vector of length 3 representing the plane's normal vector.
+        %   V  - Matrix of shape (n_vertices, 3) with 3D vertex coordinates.
+        %   N  - Vector of length 3 representing the plane's normal vector.
+        %   p0 - Vector of length 3 representing the origin point of the plane.
         %
         % Output:
         %   coordinates - Matrix of shape (n_vertices, 2) with 2D coordinates.
-
+        %   basis       - The 3x2 orthonormal basis for the plane.
+    
         % Ensure N is a column vector (3x1)
         N = N(:);
-
-        % Step 1: Project vertices onto the plane
-        dot_products = V * N;
+    
+        % Step 1: Shift vertices to be relative to the plane's origin p0
+        V_shifted = V - p0;
+    
+        % Step 2: Project the shifted vertices onto the plane
+        dot_products = V_shifted * N;
         N_norm_sq = N' * N;
-        % Project vertices: V - (V · N / ||N||^2) * N
-        P = V - (dot_products / N_norm_sq) .* N';
-
-        % Step 2: Find an orthonormal basis {U, V} on the plane
-        % Define standard basis vectors (3x3 identity matrix)
+        % Projected points (still in 3D, relative to p0)
+        P_shifted = V_shifted - (dot_products / N_norm_sq) .* N';
+    
+        % Step 3: Find an orthonormal basis {U, W} on the plane
         es = eye(3);
-        % Repeat N into a (3x3) matrix, each column is N
         N_rep = repmat(N, 1, 3);
-        cross_products = cross(N_rep, es', 1);  % (3x3)
-        norms = vecnorm(cross_products, 2, 1);  % (1x3)
-        % Find index of the largest norm
-        [~, max_idx] = max(norms);
-        % Select U as the cross product with the largest norm
+        cross_products = cross(N_rep, es', 1);
+        [~, max_idx] = max(vecnorm(cross_products, 2, 1));
         U = cross_products(:, max_idx);
         U = U / norm(U);
-        % Compute V as N x U and normalize
-        V = cross(N, U);
-        V = V / norm(V);
-
-        % Step 3: Compute 2D coordinates
-        % Form basis matrix with U and V as columns (3x2)
-        basis = [U, V];
-        % Project P onto the basis to get 2D coordinates (n_vertices x 2)
-        coordinates = P * basis;
+        W = cross(N, U);
+        W = W / norm(W);
+        basis = [U, W]; % This is the 3x2 basis matrix
+    
+        % Step 4: Compute 2D coordinates by projecting onto the new basis
+        coordinates = P_shifted * basis;
     end
 
     function [loc,loc_i,dir,E_max_ind] = stimulatedTarget(E,stimMetric)

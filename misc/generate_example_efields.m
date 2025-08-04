@@ -1,4 +1,4 @@
-function [E_set,mesh] = generate_example_E_fields(surface_type)
+function [efield_set,mesh] = generate_example_efields(surface_type)
 
 % Create surface
 if strcmp(surface_type,'spherical')
@@ -8,20 +8,19 @@ elseif strcmp(surface_type,'complex')
 end
 
 % Generate circular field
-E_set(1,:,:) = generate_ring_field(mesh);
+efield_set(1,:,:) = generate_ring_field(mesh);
 
 % Generate dual ring field
-E_set(2,:,:) = generate_dual_ring_field(mesh,0);
+efield_set(2,:,:) = generate_dual_ring_field(mesh,0);
 
 % Generate another dual ring field with 90 degree rotation
-E_set(3,:,:) = generate_dual_ring_field(mesh,pi/2);
+efield_set(3,:,:) = generate_dual_ring_field(mesh,pi/2);
 
 % Generate four-ring field
-E_set(4,:,:) = generate_four_ring_field(mesh,0);
+efield_set(4,:,:) = generate_four_ring_field(mesh,0);
 
 % Generate another four-ring field with 45 degree rotation
-E_set(5,:,:) = generate_four_ring_field(mesh,pi/4);
-
+efield_set(5,:,:) = generate_four_ring_field(mesh,pi/4);
 
 function field = generate_dual_ring_field(cortex,phi)
     field = generate_ring_field(cortex,pi/2,phi)-generate_ring_field(cortex,-pi/2,phi);

@@ -1,12 +1,12 @@
-function targets = GUI_point_and_dir_select(mesh,data,va)
-
-% Function for interactively selecting mesh indices by brushing over the
+function targets = GUI_select_target(targeting_model)
+% Function for interactively selecting mesh indices by clicking on the
 % mesh.
 %
-% Inputs:       mesh - Structure that contains mesh vertices in mesh.vertices,
-%                       faces in mesh.faces and face normals in mesh.normals.
-%               data (optional) - Datapoints to plot with size mesh.vertices.
-%               va (optional) - view angle
+% Inputs:       targeting_model - Struct that contains fields:
+%                   mesh: Struct with vertices, faces, normals, and view angle.
+%                   ROI (optional): Array of mesh vertex indices matching the E-field
+%                       computation region.
+%                   
 %
 % Output:       targets - struct with fields:
 %                   p_ind: vector of selected indices
@@ -17,26 +17,27 @@ rotSens = 10;  % Arrow rotation sensitivity
 f = figure(99);clf
 f.Position(3:4)=[1200,800];
 
-% Plot mesh
-if nargin == 1
-    data = ones(size(mesh.vertices,1),1);
-    % Set view angle with average mesh normal
-    N = mean(mesh.normals,1,'Omitnan');
-    N = N/norm(N);
-    va = [-vectorAngle([0,-1,0],N),vectorAngle([-1,0,0],N)];
-elseif nargin==2
-    N = mean(mesh.normals,1,'Omitnan');
-    N = N/norm(N);
-    va = [-vectorAngle([0,-1,0],N),vectorAngle([-1,0,0],N)];
+if ~isfield(targeting_model,'ROI')
+    ROI = 1:size(targeting_model.mesh.vertices,1);
+else
+   ROI = targeting_model.ROI; 
 end
 
-hp = patch('Faces',mesh.faces,'Vertices',mesh.vertices,'FaceVertexCData',data,'FaceColor','interp');
-view(va);
-colormap("parula")
+% Color the ROI mesh region
+data = zeros(size(targeting_model.mesh.vertices,1),1);
+data(ROI) = 1;
+
+hp = patch('Faces',targeting_model.mesh.faces,'Vertices',targeting_model.mesh.vertices,'FaceVertexCData',data,'FaceColor','interp');
+
+if isfield(targeting_model.mesh,'view_angle')
+    view(targeting_model.mesh.view_angle);
+end
+
+colormap(viridis)
 axis('tight','equal','off');
 camlight
-%lightangle(va(1),va(2))
 lighting gouraud
+material dull
 title('CLICK to select a point. Rotate direction with KEYS. Press ENTER to accept. Click OK when done.')
 hold on
 
@@ -56,11 +57,11 @@ while drawMode
         waitfor(f,'UserData');
         pos = get(f,'UserData');
         set(dh,'enable','off');
-        p_ind = find(all(mesh.vertices == pos,2),1);
+        p_ind = find(all(targeting_model.mesh.vertices == pos,2),1);
         p_inds = [p_inds;p_ind];
         % Take average normal from neighborhood
-        n = mean(mesh.normals(sqrt(sum((mesh.vertices(p_ind,:)-mesh.vertices).^2,2)) < 0.03,:),1,'Omitnan');
-        %n=N;
+        n = mean(targeting_model.mesh.normals(sqrt(sum((targeting_model.mesh.vertices(p_ind,:)-targeting_model.mesh.vertices).^2,2)) < 0.03,:),1,'Omitnan');
+        n = n/norm(n);
         
         % Set and plot initial direction
         dir = cross([-1,0,0],n);
@@ -68,7 +69,7 @@ while drawMode
 %             delete([hpoint,hquiv]);
 %         end
         hpoint = plot3(pos(1),pos(2),pos(3),'.r','MarkerSize',30);
-        hquiv = quiver3(gca,pos(1),pos(2),pos(3),dir(1),dir(2),dir(3),0.04,'r-','filled','LineWidth',2,'MaxHeadSize',1);
+        hquiv = quiver3(gca,pos(1),pos(2),pos(3),dir(1),dir(2),dir(3),0.01,'r-','filled','LineWidth',2,'MaxHeadSize',1);
         rmat_l = rotationMatrixAxis3D(rotSens*pi/180,n);
         rmat_r = rotationMatrixAxis3D(-rotSens*pi/180,n);
         set(f,'KeyPressFcn',@rotateArrow)
@@ -116,7 +117,7 @@ end
                 drawMode = 0;
 
                 for i = 1:length(p_inds)
-                    targets(i).pos = mesh.vertices(p_inds(i),:);
+                    targets(i).pos = targeting_model.mesh.vertices(p_inds(i),:);
                     targets(i).dir = dirs(i,:);
                 end
 
@@ -129,24 +130,6 @@ end
     end
 
     function R = rotationMatrixAxis3D(r,axis)
-        %function R= rotationmat3D(radians,Axis)
-        %
-        % creates a rotation matrix such that R * x
-        % operates on x by rotating x around the origin r radians around line
-        % connecting the origin to the point "Axis"
-        %
-        % example:
-        % rotate around a random direction a random amount and then back
-        % the result should be an Identity matrix
-        %
-        %r = rand(4,1);
-        %rotationmat3D(r(1),[r(2),r(3),r(4)]) * rotationmat3D(-r(1),[r(2),r(3),r(4)])
-        %
-        % example2:
-        % rotate around z axis 45 degrees
-        % Rtest = rotationmat3D(pi/4,[0 0 1])
-        %
-        %Bileschi 2009
         if nargin == 1
             if(length(rotX) == 3)
                 rotY = rotX(2);

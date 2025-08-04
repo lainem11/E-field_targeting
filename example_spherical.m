@@ -5,9 +5,9 @@
 addpath("misc/")
 
 surface_type = 'spherical';
-[E_set,mesh] = generate_example_E_fields(surface_type);
+[efield_set,mesh] = generate_example_efields(surface_type);
 
-plot_Efields(E_set,mesh)
+plot_efields(efield_set,mesh)
 
 %% Optimize E-field
 
@@ -27,11 +27,11 @@ targets = [0,0,0;
 X = [];
 tic
 for i = 1:size(targets,1)
-    result = optimize_Efield_spherical(targets(i,:),mesh.vertices,E_set);
+    result = optimize_efield_spherical(targets(i,:),mesh.vertices,efield_set);
     X(i,:) = result.weights;
 end
 toc
 % Plot
-plot_result_spherical(targets,mesh.vertices,E_set,X)
+plot_result_spherical(targets,mesh.vertices,efield_set,X)
 
 %%

@@ -1,41 +1,65 @@
-% Example of E-field targeting in a complex mesh geometry.
+% Example of E-field targeting with imported E-fields and stimulation
+% targets from InVesalius.
 %
-% This script optimizes E-fields in a paired stimulus scenario, where the
-% E-field of first conditioning stimulus (CS) is resticted on the focus area of 
-% the following test stimulus (TS).
 
 %% Acquire a set of E-fields
 
 addpath("misc/")
 
-surface_type = 'complex';
-[efield_set,mesh] = generate_example_efields(surface_type);
+subject_root_path = "MY_SUBJECT_DATA_DIRECTORY";
+subject_id = "SUB_00";
 
-% Plot
-plot_efields(efield_set,mesh)
+efield_path = fullfile(subject_root_path,subject_id,"MY_EFIELD_FILE.csv");
+headmodel_path = fullfile(subject_root_path,subject_id,"MY_HEADMESH_FILE.bin");
 
-%% Construct a targeting model structure
+%% Load E-fields and head model
 
-targeting_model.efield_set = efield_set;
-targeting_model.mesh = mesh;
+targeting_model = import_efield_model(headmodel_path,efield_path);
 
-%% Create conditioning stimulus targets
+%% Load stimulation targets from the marker file
 
-targeting_model.CS_targets = GUI_select_target(targeting_model);
+marker_file = fullfile(subject_root_path,subject_id,"MY_MARKER_FILE.mkss");
 
-%% Create test stimulus targets
+CS_target_labels = {'MY_LABEL1','MY_LABEL2'};
+TS_target_labels = {'MY_LABEL3'};
 
-targeting_model.TS_targets = GUI_select_target(targeting_model);
-
-%% Select region to avoid when applying CS
-
-[targeting_model.CS_targets.restrict_inds] = deal(GUI_select_area(targeting_model));
-
-%% Plot targets
+targeting_model.CS_targets = import_targets(marker_file,CS_target_labels);
+targeting_model.TS_targets = import_targets(marker_file,TS_target_labels);
 
 plot_model(targeting_model)
 
-%% Optimize E-fields (takes ~20 seconds)
+%% (ALTERNATIVE #1) Create conditioning stimulus targets
+
+targeting_model.CS_targets = GUI_select_target(targeting_model);
+
+%% (ALTERNATIVE #1) Create test stimulus targets
+
+targeting_model.TS_targets = GUI_select_target(targeting_model);
+
+%% Restrict E-field on TS when targeting CS, and vica versa.
+
+% Find indices on mesh
+CS_target_inds = pos2ind(vertcat(targeting_model.CS_targets.pos),targeting_model.mesh.vertices(targeting_model.ROI,:));
+TS_target_inds = pos2ind(vertcat(targeting_model.TS_targets.pos),targeting_model.mesh.vertices(targeting_model.ROI,:));
+
+% Update the targeting model
+[targeting_model.CS_targets.restrict_inds] = deal(TS_target_inds);
+[targeting_model.TS_targets.restrict_inds] = deal(CS_target_inds);
+plot_model(targeting_model)
+
+%% (ALTERNATIVE #2) Select region to avoid when applying CS
+
+[targeting_model.CS_targets.restrict_inds] = deal(GUI_select_area(targeting_model));
+
+%% (ALTERNATIVE #2) Select region to avoid when applying TS
+
+[targeting_model.TS_targets.restrict_inds] = deal(GUI_select_area(targeting_model));
+
+%% Plot
+
+plot_model(targeting_model)
+
+%% Optimize E-fields (takes ~10 seconds per target)
 
 % Set flag to use (1) or not use (0) parallel computation
 run_parallel = 0;
@@ -51,7 +75,7 @@ plot_result_complex_geom(targeting_model,results)
 
 %% Save results
 
-save("targeting_results.mat",'results')
+save(fullfile(subject_root_path,subject_id,"targeting_results.mat"),'results')
 
 %% Helper functions
 
