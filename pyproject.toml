@@ -1,0 +1,22 @@
+[project]
+name = "e-field-targeting"
+version = "1.2.0"
+description = "Electric field optimization software for targetted brain stimulation"
+authors = [
+    {name = "Mikael Laine",email = "mikael.h.laine@gmail.com"}
+]
+license = {text = "GPL-3.0-or-later"}
+readme = "README.md"
+requires-python = ">=3.10"
+
+[project.urls]
+"Repository" = "https://github.com/lainem11/E-field_targeting"
+"Bug Tracker" = "https://github.com/lainem11/E-field_targeting/issues"
+
+[tool.poetry.dependencies]
+jax = {extras = ["cuda12"], version = ">0.4.0"}
+evosax = ">=0.2.0,<0.3.0"
+
+[build-system]
+requires = ["poetry-core>=2.0.0,<3.0.0"]
+build-backend = "poetry.core.masonry.api"
