@@ -14,9 +14,14 @@ requires-python = ">=3.10"
 "Bug Tracker" = "https://github.com/lainem11/E-field_targeting/issues"
 
 [tool.poetry.dependencies]
+python = ">=3.10"
 jax = {extras = ["cuda12"], version = ">0.4.0"}
 evosax = ">=0.2.0,<0.3.0"
+plotly = ">=5.0.0"
+numpy = ">=1.23.0"
+scipy = ">=1.9.0"
 
 [build-system]
 requires = ["poetry-core>=2.0.0,<3.0.0"]
 build-backend = "poetry.core.masonry.api"
+
