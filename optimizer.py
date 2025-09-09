@@ -47,10 +47,14 @@ class OptimizerSettings(NamedTuple):
     differential_weight: float
     dist_constraint_m: float
     angle_constraint_deg: float
+    max_dist_constraint_m: float
     w_focality: float
     w_penalty: float
     k_penalty: float
     t_penalty: float
+    w_energy: float
+    k_energy: float
+    energy_limit_fn: Callable[int,float]
 
 
 class Stimulator(NamedTuple):
@@ -63,6 +67,7 @@ class OptimizationTarget(NamedTuple):
     """Defines the target for the optimization."""
     position: Array
     direction: Array
+    intensity: Array
 
 
 # --- Core Mathematical & Projection Functions (JAX Compatible) ---
@@ -107,7 +112,7 @@ def project_and_flatten(
 
 
 def _create_objective_function(
-    normalized_efield_set: Array,
+    max_efield_set: Array,
     efield_basis: Array,
     mesh: Mesh,
     settings: OptimizerSettings,
@@ -165,7 +170,7 @@ def _create_objective_function(
         population: Array, target: OptimizationTarget
     ) -> Dict[str, Array]:
         """Calculates the objective for one member of the population."""
-        # --- 1. Project Mesh onto a 2D Plane Centered at the Target ---
+        # Project Mesh onto a 2D Plane Centered at the Target
         dist_from_target = jnp.linalg.norm(
             mesh.vertices - target.position, axis=1
         )
@@ -182,51 +187,64 @@ def _create_objective_function(
         # In the new 2D system, the target's position is the origin.
         target_pos_2d = jnp.zeros(2)
 
-        # --- 2. Calculate Target Direction in the 2D Plane ---
+        # Calculate Target Direction in the 2D Plane
         closest_vertex_idx = _pos_to_idx(target.position, mesh.vertices)
         projection_basis = efield_basis[closest_vertex_idx]
         target_dir_2d = target.direction @ projection_basis
 
-        # --- 3. Compute Realized E-field and Stimulation Target ---
+        # Compute Realized E-field and Stimulation Target
         e_combined = jnp.einsum(
-            "c,cvd->vd", population, normalized_efield_set
+            "c,cvd->vd", population, max_efield_set
         )
         loc_realized_2d, dir_realized_3d = _get_stimulated_target(
             e_combined, mesh_vertices_2d
         )
         dir_realized_2d = dir_realized_3d @ projection_basis
 
-        # --- 4. Calculate Location and Angle Errors ---
+        # Calculate Focality Objective
+        e_mag, e_max, e_max_idx = _e_to_mag(e_combined)
+        e_mag_n = e_mag / (e_max + 1e-8)
+        focality_objective = jnp.mean(e_mag_n**2)
+
+        # Calculate solution energy and limit
+        scaling_factor = target.intensity / (e_max + 1e-8)
+        solution_energy = jnp.sum((scaling_factor * population)**2)
+        energy_limit = settings.energy_limit_fn(max_efield_set.shape[0])
+
+        # Calculate energy penalty using stable softplus
+        energy_violation = jax.nn.relu(solution_energy-energy_limit)
+        x_energy = settings.k_energy * energy_violation
+        energy_penalty = jnp.where(x_energy > 30.0, x_energy, jnp.log(1.0 + jnp.exp(x_energy)))
+
+        # Calculate Location and Angle Errors
         loc_error = jnp.linalg.norm(loc_realized_2d - target_pos_2d)
         angle_error = _calculate_vector_angle_deg(
             target_dir_2d, dir_realized_2d
         )
+        # Calculate distance from target to E-field maximum
+        e_max_distance = jnp.linalg.norm(mesh_vertices_2d[e_max_idx])
 
-        # --- 5. Calculate Penalty Term (Softplus) ---
+        # Calculate target accuracy penalty term
         loc_error_norm = loc_error / settings.dist_constraint_m
         angle_error_norm = angle_error / settings.angle_constraint_deg
-        combined_error = loc_error_norm + angle_error_norm
+        e_max_error_norm = e_max_distance / settings.max_dist_constraint_m
 
-        # Numerically stable softplus to avoid overflow
-        x = settings.k_penalty * (combined_error - settings.t_penalty)
-        penalty_term = jnp.where(
-            x > 30.0, x, jnp.log(1.0 + jnp.exp(x))
-        )
+        combined_error = loc_error_norm + angle_error_norm + e_max_error_norm
 
-        # --- 6. Calculate Focality Objective ---
-        e_mag, e_max, _ = _e_to_mag(e_combined)
-        e_mag_n = e_mag / (e_max + 1e-8)
-        focality_objective = jnp.mean(e_mag_n**2)
+        x_penalty = settings.k_penalty * (combined_error - settings.t_penalty)
+        accuracy_penalty = jnp.where(x_penalty > 30.0, x_penalty, jnp.log(1.0 + jnp.exp(x_penalty)))
 
-        # --- 7. Combine into Final Fitness Score ---
-        total_fitness = (settings.w_focality * focality_objective) + (
-            settings.w_penalty * penalty_term
-        )
+        # Combine into Final Fitness Score
+        focality_term = settings.w_focality * focality_objective
+        accuracy_term = settings.w_penalty * accuracy_penalty
+        energy_term = settings.w_energy * energy_penalty
+        total_fitness = focality_term + accuracy_term + energy_term
 
         return {
             "fitness": total_fitness,
-            "focality": focality_objective,
-            "penalty": penalty_term,
+            "focality": focality_term,
+            "accuracy": accuracy_term,
+            "energy": energy_term,
             "loc_error": loc_error,
             "angle_error": angle_error,
         }
@@ -267,7 +285,8 @@ def _optimizer_step(
     log_metrics = {
         "best_fitness": strategy_metrics["best_fitness"],
         "focality": eval_output["focality"][best_idx],
-        "penalty": eval_output["penalty"][best_idx],
+        "accuracy": eval_output["accuracy"][best_idx],
+        "energy": eval_output["energy"][best_idx],
         "loc_error": eval_output["loc_error"][best_idx],
         "angle_error": eval_output["angle_error"][best_idx],
     }
@@ -289,10 +308,14 @@ class StimulusOptimizer:
         differential_weight=0.9871,
         dist_constraint_m=0.001,
         angle_constraint_deg=5.0,
+        max_dist_constraint_m=0.01,
         w_focality=1.0,
         w_penalty=1.0,
         k_penalty=5.0,
         t_penalty=1.0,
+        w_energy=1.0,
+        k_energy=5.0,
+        energy_limit_fn=lambda n_coils, mso=MSO_CONSTRAINT: (np.sum((np.ones(n_coils) * mso)**2))
     )
 
     def __init__(self, settings: OptimizerSettings = None):
@@ -372,10 +395,10 @@ class StimulusOptimizer:
             raise IOError(f"Failed to load or parse .mat file: {e}")
 
         # Normalize E-field by max current slope
-        normalized_efield_set = (
+        max_efield_set = (
             efield_set * self.stimulator.max_current_slope.reshape(-1, 1, 1)
         )
-        self.efield_set = jax.device_put(normalized_efield_set, self.jax_device)
+        self.efield_set = jax.device_put(max_efield_set, self.jax_device)
         self.n_coils = self.efield_set.shape[0]
         self._sobol_sampler = Sobol(d=self.n_coils, scramble=True)
 
@@ -423,13 +446,14 @@ class StimulusOptimizer:
         print(f"Successfully loaded and prepared E-field model from {filename}.")
 
     def run(
-        self, target_position: NpArray, target_direction: NpArray
+        self, target_position: NpArray, target_direction: NpArray, target_intensity: float
     ) -> Tuple[NpArray, NpArray, NpArray]:
         """Runs the optimization process for a given target.
 
         Args:
             target_position: A numpy array (3,) for the target 3D position.
             target_direction: A numpy array (3,) for the target 3D direction.
+            target_intensity: A float for the target stimulation intensity.
 
         Returns:
             A tuple containing:
@@ -455,6 +479,10 @@ class StimulusOptimizer:
                 jnp.asarray(target_direction, dtype=jnp.float32),
                 self.jax_device,
             ),
+            intensity=jax.device_put(
+                jnp.asarray(target_intensity, dtype=jnp.float32),
+                self.jax_device,
+            )
         )
 
         # --- Initialize Population ---
@@ -494,13 +522,15 @@ class StimulusOptimizer:
 
         final_loc_error = np.array(final_eval_output["loc_error"][0])
         final_angle_error = np.array(final_eval_output["angle_error"][0])
-        best_solution = np.array(final_state.best_solution)
+        best_solution = final_state.best_solution
 
-        # Apply final energy constraint and scale to physical units
-        constrained_solution = self._constrain_energy(best_solution)
-        final_weights = (
-            constrained_solution * self.stimulator.max_current_slope
-        )
+        # Scale solution to target intensity
+        e_combined = jnp.einsum("c,cvd->vd", best_solution, self.efield_set)
+        e_max = jnp.max(jnp.linalg.norm(e_combined, axis=1))
+        scaling_factor = target_intensity / (e_max + 1e-8)
+
+        # Scale to physical units
+        final_weights = best_solution * scaling_factor * self.stimulator.max_current_slope
 
         return final_weights, final_loc_error, final_angle_error
 
@@ -659,19 +689,20 @@ def _get_stimulated_target_3d(
     return loc_3d, dir_normalized_3d
 
 
-def visualize_solution_plotly(
+def visualize_solution(
     optimizer: StimulusOptimizer,
     solution_weights: NpArray,
-    optimization_target: Tuple[NpArray, NpArray],
+    target_pos: NpArray,
+    target_dir: NpArray,
 ):
     """Creates an interactive 3D plot of the optimization result using Plotly.
 
     Args:
         optimizer: The completed StimulusOptimizer instance.
         solution_weights: The final optimized coil weights.
-        optimization_target: A tuple of (position, direction).
+        target_pos: Stimulation target position.
+        target_dir: Stimulation direction vector.
     """
-    target_pos, target_dir = optimization_target
     target_pos_jax = jnp.asarray(target_pos)
 
     # Normalize weights to range [-1, 1] for E-field calculation
@@ -694,9 +725,9 @@ def visualize_solution_plotly(
             i=np.array(optimizer.mesh.faces[:, 0]),
             j=np.array(optimizer.mesh.faces[:, 1]),
             k=np.array(optimizer.mesh.faces[:, 2]),
-            intensity=np.array(e_mag / (e_max + 1e-8)),
+            intensity=np.array(e_mag),
             colorscale="Viridis",
-            colorbar_title="Normalized E-Field",
+            colorbar_title="E-Field",
             name="Brain Mesh",
         )
     )
@@ -768,59 +799,116 @@ def visualize_solution_plotly(
 
     fig.show()
 
-
 def visualize_loss_components(optimizer: StimulusOptimizer):
-    """Visualizes the convergence of the loss and its components.
+    """
+    Visualizes loss convergence and the relative contributions of its components.
 
+    This function creates a two-part plot:
+    1. The convergence of the total loss (best fitness) over generations.
+    2. A stacked area chart showing the percentage contribution of the focality,
+       accuracy penalty, and energy penalty to the total loss at each step.
+    
     Args:
         optimizer: The completed StimulusOptimizer instance.
     """
     loss_data = optimizer.loss_components
-    if not loss_data or "best_fitness" not in loss_data:
+    
+    # Check if the necessary, corrected data is available for plotting
+    required_keys = ["best_fitness", "focality", "accuracy", "energy"]
+    if not loss_data or not all(key in loss_data for key in required_keys):
         print(
-            "Loss components not found. Please run the optimizer first."
+            "Loss components are missing or incomplete. Please run the optimizer "
+            "and ensure the `_optimizer_step` function is corrected to log "
+            "'focality', 'accuracy', and 'energy' terms."
         )
         return
 
     generations = np.arange(len(loss_data["best_fitness"]))
 
-    # Safely calculate the ratio of weighted components
+    # Extract the individual loss components
     focality = loss_data["focality"]
-    penalty = loss_data["penalty"]
-    ratio = focality / (penalty + 1e-9)  # Avoid division by zero
+    accuracy = loss_data["accuracy"]
+    energy = loss_data["energy"]
 
+    # Calculate the total from components for normalization
+    # Add a small epsilon to prevent division by zero
+    total_components = focality + accuracy + energy
+    total_components_safe = total_components + 1e-9
+
+    # Calculate the percentage contribution of each component
+    focality_pct = (focality / total_components_safe) * 100
+    accuracy_pct = (accuracy / total_components_safe) * 100
+    energy_pct = (energy / total_components_safe) * 100
+
+    # Create a figure with two subplots
     fig = make_subplots(
         rows=2,
         cols=1,
         subplot_titles=(
             "Total Loss Convergence",
-            "Focality / Penalty Ratio",
+            "Relative Contribution of Loss Components",
         ),
     )
 
+    # Plot 1: Total loss convergence over generations
     fig.add_trace(
         go.Scatter(
             x=generations,
             y=loss_data["best_fitness"],
             mode="lines",
             name="Total Loss",
+            line=dict(color='royalblue')
         ),
         row=1,
         col=1,
     )
+
+    # Plot 2: Stacked area chart of relative contributions
     fig.add_trace(
         go.Scatter(
-            x=generations, y=ratio, mode="lines", name="Focality/Penalty Ratio"
+            x=generations,
+            y=focality_pct,
+            mode='lines',
+            stackgroup='one', # Key parameter for stacked area chart
+            name='Focality',
+            line=dict(width=0.5, color='#1f77b4') # Muted blue
+        ),
+        row=2,
+        col=1,
+    )
+    fig.add_trace(
+        go.Scatter(
+            x=generations,
+            y=accuracy_pct,
+            mode='lines',
+            stackgroup='one',
+            name='Accuracy Penalty',
+            line=dict(width=0.5, color='#ff7f0e') # Muted orange
+        ),
+        row=2,
+        col=1,
+    )
+    fig.add_trace(
+        go.Scatter(
+            x=generations,
+            y=energy_pct,
+            mode='lines',
+            stackgroup='one',
+            name='Energy Penalty',
+            line=dict(width=0.5, color='#d62728') # Muted red
         ),
         row=2,
         col=1,
     )
 
+    # Update axes and layout
     fig.update_xaxes(title_text="Generation", row=2, col=1)
-    fig.update_yaxes(title_text="Loss Value", row=1, col=1)
-    fig.update_yaxes(title_text="Ratio (log scale)", type="log", row=2, col=1)
+    fig.update_yaxes(title_text="Loss Value (log scale)", type="log", row=1, col=1)
+    fig.update_yaxes(title_text="Contribution (%)", range=[0, 100], row=2, col=1)
     fig.update_layout(
-        height=800, title_text="Optimization Loss Analysis", showlegend=False
+        height=800, 
+        title_text="Optimization Loss Analysis",
+        #legend_tracegroup="one" # Group legend items for the stacked plot
     )
 
     fig.show()
