@@ -1,5 +1,5 @@
 [project]
-name = "e-field-targeting"
+name = "e_field_targeting"
 version = "1.2.0"
 description = "Electric field optimization software for targetted brain stimulation"
 authors = [
