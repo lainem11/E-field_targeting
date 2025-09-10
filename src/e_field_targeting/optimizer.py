@@ -63,7 +63,8 @@ class OptimizerSettings(NamedTuple):
 
 class Stimulator(NamedTuple):
     """Properties of the TMS stimulator device."""
-
+    max_voltage: Array
+    inductance: Array
     max_current_slope: Array
     polarity: Array
 

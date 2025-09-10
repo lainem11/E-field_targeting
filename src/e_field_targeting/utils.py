@@ -4,10 +4,35 @@ Contains shared, pure mathematical and geometric utility functions.
 from typing import Tuple
 
 import jax.numpy as jnp
+import numpy as np
+from scipy.spatial import Delaunay
 
 # --- Type Aliases ---
 Array = jnp.ndarray
 
+def triangulate_vertices(vertices: Array) -> Array:
+    """
+    Computes a 2D Delaunay triangulation for vertices projected on the XY plane.
+
+    This is suitable for meshes that are structured like a cap or sheet,
+    where a 2D projection is a reasonable representation for connectivity.
+
+    Args:
+        vertices: A JAX array of shape (n_vertices, 3) representing vertex coordinates.
+
+    Returns:
+        A JAX array of shape (n_faces, 3) with integer type, representing
+        the vertex indices for each triangular face.
+    """
+    # Convert to NumPy array for compatibility with SciPy.
+    points_2d = np.asarray(vertices[:, :2])
+
+    # Perform Delaunay triangulation on the 2D points.
+    tri = Delaunay(points_2d)
+
+    # The 'simplices' attribute contains the indices of the vertices for each triangle.
+    # Convert the result back to a JAX array with the appropriate integer type.
+    return jnp.asarray(tri.simplices, dtype=jnp.int32)
 
 def project_and_flatten(
     vertices: Array, normal: Array, origin: Array
