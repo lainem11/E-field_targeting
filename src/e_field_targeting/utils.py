@@ -80,3 +80,67 @@ def calculate_vertex_normals(vertices: Array, faces: Array) -> Array:
     is_zero_norm = (norms < 1e-8).squeeze()
     default_normal = jnp.array([0.0, 0.0, 1.0])
     return jnp.where(is_zero_norm[:, None], default_normal, safe_vertex_normals)
+
+def generate_target_from_shift(
+    target_shift: Array, vertices: Array
+) -> Tuple[Array, Array]:
+    """
+    Generates target position and direction from shift parameters.
+
+    The function assumes a spherical mesh and calculates the target position
+    by rotating an apex point on the sphere. The direction is similarly
+    calculated by rotating a default direction vector.
+
+    Args:
+        target_shift: A JAX array of shape (3,) containing the target shifts:
+                      - target_shift[0]: Horizontal shift 'x' in mm.
+                      - target_shift[1]: Vertical shift 'y' in mm.
+                      - target_shift[2]: Clockwise rotation 'theta' in degrees.
+        vertices: A JAX array of shape (n_vertices, 3) representing vertex
+                  coordinates on a spherical surface.
+
+    Returns:
+        A tuple containing:
+        - target_position (Array): A JAX array of shape (3,) for the target coordinates.
+        - target_direction (Array): A JAX array of shape (3,) for the target direction vector.
+    """
+    # Ensure target_shift is a JAX array
+    target_shift = jnp.asarray(target_shift, dtype=jnp.float32)
+
+    # Calculate the radius of the sphere from the vertices
+    r = jnp.max(jnp.sqrt(jnp.sum(vertices**2, axis=1)))
+
+    # The apex of the mesh, starting point for rotation
+    mesh_apex = jnp.array([0.0, 0.0, r])
+
+    # Convert shifts (mm) and rotation (degrees) to angles (radians)
+    # phi: rotation around x-axis from vertical shift 'y'
+    phi = target_shift[1] / 1000.0 / r
+    # pha: rotation around y-axis from horizontal shift 'x'
+    pha = -target_shift[0] / 1000.0 / r
+    # pho: rotation around z-axis from 'theta'
+    pho = jnp.deg2rad(target_shift[2])
+
+    # Define rotation matrices
+    def Rmatx(a: float) -> Array:
+        s, c = jnp.sin(a), jnp.cos(a)
+        return jnp.array([[1.0, 0.0, 0.0], [0.0, c, -s], [0.0, s, c]])
+
+    def Rmaty(a: float) -> Array:
+        s, c = jnp.sin(a), jnp.cos(a)
+        return jnp.array([[c, 0.0, s], [0.0, 1.0, 0.0], [-s, 0.0, c]])
+
+    def Rmatz(a: float) -> Array:
+        s, c = jnp.sin(a), jnp.cos(a)
+        return jnp.array([[c, -s, 0.0], [s, c, 0.0], [0.0, 0.0, 1.0]])
+
+    # Calculate target position by rotating the apex
+    target_position = mesh_apex @ Rmatx(phi) @ Rmaty(pha)
+
+    # Define the initial, unrotated direction
+    center_dir = jnp.array([0.0, 1.0, 0.0])
+
+    # Calculate target direction by rotating the center direction
+    target_direction = center_dir @ Rmatz(pho) @ Rmatx(phi) @ Rmaty(pha)
+
+    return target_position, target_direction

@@ -20,7 +20,7 @@ from .optimizer import (
     Stimulator,
     StimulusOptimizer,
 )
-from .utils import project_and_flatten
+from .utils import project_and_flatten, generate_target_from_shift
 
 # --- Type Aliases ---
 Array = jnp.ndarray
@@ -317,6 +317,10 @@ class TMSOptimizer:
     def get_mesh_vertices(self) -> NpArray:
         """Returns the vertices of the brain mesh as a NumPy array."""
         return np.array(self._mesh.vertices)
+
+    def get_target_from_shift(self,target_shift: Array):
+        """Returns a tuple of target position and direction in mesh coordinates."""
+        return generate_target_from_shift(target_shift, self._mesh.vertices)
 
     def run_optimization(
         self,
