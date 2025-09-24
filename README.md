@@ -1,4 +1,4 @@
-# E-field targeting v1.1.2
+# E-field targeting v1.1.3
 
 [![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.16739105.svg)](https://doi.org/10.5281/zenodo.16739105)
 
@@ -68,7 +68,7 @@ where $\delta_{loc}$ is the maximum acceptable diffence between the target and r
 When the optimization constraints are met, the best solution is chosen by minimizing the objective. The optimization function has two options for the objective: 'minEnergy' or 'Focality'.
 
 **minEnergy**\
-$$\text{minimize } f(w) =  \sum_{i=1}^k (\frac{w^i}{\text{max}(|w|)})^2 $$
+$$\text{minimize } f(w) =  \sum_{i=1}^k (\frac{w^i}{E_{\text{max}}})^2 $$
 
 **Focality**\
 $$\text{minimize } f(w) = \sum_{n=1}^N \hat{E}^{2}_{\text{norm, n}}$$
@@ -77,7 +77,7 @@ $$\text{minimize } f(w) = \sum_{n=1}^N \hat{E}^{2}_{\text{norm, n}}$$
 The optimization function has an option limit the E-field magnitude in specified locations $S'$ by including a penalty term to the objective function:
 
 **minEnergy**\
-$$\text{minimize } f(w) =  \sum_{i=1}^k (\frac{w^i}{\text{max}(|w|)})^2 + \text{mean}(\hat{E}\_{\text{norm, S'}})*10$$
+$$\text{minimize } f(w) =  \sum_{i=1}^k (\frac{w^i}{E_{\text{max}}})^2 + \text{mean}(\hat{E}\_{\text{norm, S'}})*10$$
 
 **Focality**\
 $$\text{minimize } f(w) = \text{mean}(\hat{E}^{2}\_{\text{norm}}) + \text{mean}(\hat{E}^{2}\_{\text{norm, S'}})$$
