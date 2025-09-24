@@ -1,6 +1,6 @@
 # E-field targeting v1.1.3
 
-[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.16739105.svg)](https://doi.org/10.5281/zenodo.16739105)
+[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.17192323.svg)](https://doi.org/10.5281/zenodo.17192323)
 
 This repository is used to solve optimization problems where a set of electric fields (E-fields) are superimposed to focus the E-field at a target location and in target direction. It is specifically designed for multi-coil transcranial magnetic stimulation where the E-fields are induced in the cortex usign a set of coils, but it could be used for other applications as well.
 
