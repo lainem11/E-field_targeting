@@ -173,7 +173,8 @@ end
                 else
                     penalty = 0;
                 end
-                obj = sum((x/max(abs(x))).^2)+penalty;
+                realized_x = x/E_max;
+                obj = sum(realized_x.^2)+penalty;
             otherwise
                 warning('Unkown objective type.')
                 return
