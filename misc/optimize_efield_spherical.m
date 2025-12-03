@@ -158,7 +158,8 @@ end
     function obj = objectiveFcn(x)
         E_f = squeeze(sum(E_set.*x',1));
         Emag_f = sqrt(sum(E_f.^2,2));
-        Emagn_f = Emag_f/max(Emag_f);
+        E_max = max(Emag_f);
+        Emagn_f = Emag_f/E_max;
         switch objectiveType
             case 'Focality'
                 if ~isempty(restrictEF)
